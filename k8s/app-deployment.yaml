@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-deployment
+  namespace: thred
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: thred
+  template:
+    metadata:
+      labels:
+        app: thred
+    spec:
+      containers:
+      - name: app-container
+        image: namgungjaeseon/thred_app:dev
+        ports:
+        - containerPort: 8080
+        env:
+          - name: SPRING.DATASOURCE.URL
+            value: jdbc:mysql://db-service:3306/thRedDb?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+          - name: SPRING.DATASOURCE.USERNAME
+            value: root
+          - name: SPRING.DATASOURCE.PASSWORD
+            value: thRed2024
+          - name: SPRING.DATASOURCE.DRIVER-CLASS-NAME
+            value: com.mysql.cj.jdbc.Driver
+          - name: SPRING.DATA.REDIS.HOST
+            value: thred_redis
+          - name: SPRING.DATA.REDIS.PORT
+            value: "6379"
+          - name: SPRING_PROFILES_ACTIVE
+            value: dev
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  namespace: thred
+spec:
+  selector:
+    app: thred
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30002

@@ -1,0 +1,581 @@
+Description: Thred network resource template
+Resources:
+  # VPC 설정
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true # DNS 호스트네임 활성화
+      EnableDnsSupport: true # DNS 지원 활성화
+      InstanceTenancy: default # EC2 인스턴스를 default (공용 하드웨어)로 실행
+      Tags:
+        - Key: Name
+          Value: thred-vpc
+        - Key: Type
+          Value: isolated
+
+  # 인터넷 접속을 위한 게이트웨이 생성
+  Igw:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: thred-igw
+
+  # VPC에 인터넷 게이트웨이(IGW)를 연결
+  VpcIgwAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref Igw
+
+  ############### Subnet, RouteTable, IGW, NAT ###############
+
+  # Ingress 관련 설정
+  ## Ingress용 퍼블릭 서브넷
+  SubnetPublicIngress2A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.8.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: thred-subnet-public-ingress-2a
+        - Key: Type
+          Value: public
+
+  SubnetPublicIngress2B:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.9.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: thred-subnet-public-ingress-2b
+        - Key: Type
+          Value: public
+
+  ## Ingress용 라우팅 테이블
+  RouteTableIngress:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: thred-route-ingress
+
+  ## Ingress용 서브넷에 라우팅 연결
+  RouteIngressAssociation2A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableIngress
+      SubnetId: !Ref SubnetPublicIngress2A
+
+  RouteIngressAssociation2B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableIngress
+      SubnetId: !Ref SubnetPublicIngress2B
+
+  ## Ingress용 라우팅 테이블의 기본 라우팅
+  RouteTableIngressDefault:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableIngress
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Igw
+    DependsOn:
+      - VpcIgwAttachment
+
+  ## NatGateway Elastic Ip 설정
+  NatEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: thred-nat-gateway-eip
+  ## NATGateway 설정
+  NatGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref SubnetPublicIngress2A
+      AllocationId: !GetAtt NatEIP.AllocationId
+      Tags:
+        - Key: Name
+          Value: thred-nat-gateway
+
+  # 백엔드 관련 설정
+  ## 백엔드 애플리케이션용 프라이빗 서브넷
+  SubnetPrivateBackend2A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.16.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      # 이 서브넷에 생성되는 EC2 인스턴스나 ENI가 자동으로 퍼블릭 IP를 받지 않음
+      # 외부 접근 불가능
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: thred-subnet-private-backend-2a
+        - Key: Type
+          Value: isolated
+  SubnetPrivateBackend2B:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.17.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: thred-subnet-private-backend-2b
+        - Key: Type
+          Value: isolated
+
+  ## 백엔드 애플리케이션용 라우팅 테이블
+  RouteTableBackend:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: thred-route-table-backend
+
+  ## 백엔드 서브넷과 라우팅 연결
+  RouteTableAssociation2A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableBackend
+      SubnetId: !Ref SubnetPrivateBackend2A
+
+  RouteTableAssociation2B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableBackend
+      SubnetId: !Ref SubnetPrivateBackend2B
+
+  RouteNatGateway:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableBackend
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway
+
+  # DB관련 설정
+  ## DB용 프라이빗 서브넷
+  SubnetPrivateDb2A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.24.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: thred-subnet-private-db-2a
+        - Key: Type
+          Value: isolated
+
+  SubnetPrivateDb2B:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.25.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 1
+        - !GetAZs ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: thred-subnet-private-db-2b
+        - Key: Type
+          Value: isolated
+
+  ## DB용 라우팅 테이블
+  RouteTableDb:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: thred-route-db
+
+  ## DB 서브넷에 라우팅 연결
+  RouteDbAssociation2A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableDb
+      SubnetId: !Ref SubnetPrivateDb2A
+
+  RouteDbAssociation2B:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableDb
+      SubnetId: !Ref SubnetPrivateDb2B
+
+  # 관리 서버 관련 설정
+  ## 관리용 퍼블릭 서브넷
+  SubnetPublicManagement2A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.240.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: thred-subnet-public-management-2a
+        - Key: Type
+          Value: public
+
+  ## 관리용 라우팅 테이블
+  RouteTableManagement:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: thred-route-management
+
+  ## 관리용 서브넷의 라우팅은 Ingress와 동일하게 생성
+  RouteManagementAssociation2A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableManagement
+      SubnetId: !Ref SubnetPublicManagement2A
+
+  # VPC 엔드포인트 관련 설정
+  ## VPC 엔드포인트(Egress통신)용 프라이빗 서브넷
+  SubnetPrivateEgress2A:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.248.0/24
+      VpcId: !Ref Vpc
+      AvailabilityZone: !Select
+        - 0
+        - !GetAZs ''
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: thred-subnet-private-egress-2a
+        - Key: Type
+          Value: isolated
+
+  ## 관리용 라우팅 테이블
+  RouteTableEgress:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: thred-route-egress
+
+  ## 관리용 서브넷의 라우팅은 Ingress와 동일하게 생성
+  RouteEgressAssociation2A:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref RouteTableEgress
+      SubnetId: !Ref SubnetPrivateEgress2A
+
+  ############### Security groups ###############
+  # 보안 그룹 생성
+  ## 인터넷 공개용 보안 그룹 생성
+  SgIngress:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ingress
+      GroupName: ingress
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1' # 모든 프로토콜 허용
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          Description: from 0.0.0.0/0:80
+          FromPort: 80
+          IpProtocol: tcp
+          ToPort: 80
+      Tags:
+        - Key: Name
+          Value: thred-sg-ingress
+      VpcId: !Ref Vpc
+
+  ## 관리 서버용 보안 그룹 생성
+  SgManagement:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of management server
+      GroupName: management
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: "-1"
+      Tags:
+        - Key: Name
+          Value: thred-sg-management
+      VpcId: !Ref Vpc
+
+  ## 백엔드 컨테이너 애플리케이션용 보안 그룹 생성
+  SgBackend:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of backend app
+      GroupName: backend
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: thred-sg-backend
+      VpcId: !Ref Vpc
+
+  ## DB용 보안 그룹 생성
+  SgDb:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of database
+      GroupName: database
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: thred-sg-db
+      VpcId: !Ref Vpc
+
+  ## VPC 엔드포인트용 보안 그룹 설정
+  SgEgress:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group of VPC Endpoint
+      GroupName: egress
+      SecurityGroupEgress:
+        - CidrIp: 0.0.0.0/0
+          Description: Allow all outbound traffic by default
+          IpProtocol: '-1'
+      Tags:
+        - Key: Name
+          Value: thred-sg-vpc-endpoint
+      VpcId: !Ref Vpc
+
+  # 역할 연결
+  ## Internet LB -> Front Container
+  SgBackendFromsSgIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTP for Ingress
+      FromPort: 80
+      GroupId: !Ref SgBackend
+      SourceSecurityGroupId: !Ref SgIngress
+      ToPort: 80
+
+  ## Backend -> DB
+  SgDbFromSgBackend:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: MySQL protocol from backend App
+      FromPort: 3306 # MySQL의 기본 포트인 3306번 포트에서
+      GroupId: !Ref SgDb # SgDb 보안 그룹의 ID를 참조
+      SourceSecurityGroupId: !Ref SgBackend # SgBackend 보안 그룹에서 오는 트래픽을 허용
+      ToPort: 3306 # MySQL의 기본 포트인 3306번 포트까지
+
+  ## Backend -> Redis
+  SgRedisFromSgBackend:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: Redis protocol from backend App
+      FromPort: 6379
+      GroupId: !Ref SgManagement
+      SourceSecurityGroupId: !Ref SgBackend
+      ToPort: 6379
+
+  ### Backend -> VPC endpoint
+  SgVpcEndpointFromSgBackEnd:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTPS for Container App
+      FromPort: 443
+      GroupId: !Ref SgEgress
+      SourceSecurityGroupId: !Ref SgBackend
+      ToPort: 443
+
+  ### Management -> VPC endpoint
+  SgVpcEndpointFromSgManagement:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: HTTPS for Container App
+      FromPort: 443
+      GroupId: !Ref SgEgress
+      SourceSecurityGroupId: !Ref SgManagement
+      ToPort: 443
+
+  ### SSH -> Management
+  SgManagementIngressSSH:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      Description: Allow SSH from public internet
+      FromPort: 22
+      ToPort: 22
+      GroupId: !Ref SgManagement
+      CidrIp: 0.0.0.0/0
+
+  ## Management 용 라우팅 테이블의 기본 라우팅
+  RouteTableManagementDefault:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref RouteTableManagement
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref Igw
+    DependsOn:
+      - VpcIgwAttachment
+
+  # VPC Endpoint 생성
+  # ECR Api
+  VpcEndpointEcrApi:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.ap-northeast-2.ecr.api
+      VpcEndpointType: Interface
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref SubnetPrivateEgress2A
+      SecurityGroupIds:
+        - !Ref SgEgress
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: thred-vpc-endpoint-ecr-api
+
+  # ECR dkr
+  VpcEndpointEcrDkr:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.ap-northeast-2.ecr.dkr
+      VpcEndpointType: Interface
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref SubnetPrivateEgress2A
+      SecurityGroupIds:
+        - !Ref SgEgress
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: thred-vpc-endpoint-ecr-dkr
+
+  # S3
+  VpcEndpointS3:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.ap-northeast-2.s3
+      VpcEndpointType: Gateway
+      VpcId: !Ref Vpc
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action:
+              - s3:GetObject
+            Resource:
+              - arn:aws:s3:::prod-ap-northeast-2-starport-layer-bucket/*
+      RouteTableIds:
+        - !Ref RouteTableEgress
+      Tags:
+        - Key: Name
+          Value: thred-vpc-endpoint-s3
+
+  # CloudWatch Logs
+  VpcEndpointLogs:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.ap-northeast-2.logs
+      VpcEndpointType: Interface
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref SubnetPrivateEgress2A
+      SecurityGroupIds:
+        - !Ref SgEgress
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: thred-vpc-endpoint-logs
+
+  VpcEndpointSsm:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      ServiceName: com.amazonaws.ap-northeast-2.ssm
+      VpcEndpointType: Interface
+      VpcId: !Ref Vpc
+      SubnetIds:
+        - !Ref SubnetPrivateEgress2A
+      SecurityGroupIds:
+        - !Ref SgEgress
+      PrivateDnsEnabled: true
+      Tags:
+        - Key: Name
+          Value: thred-vpc-endpoint-ssm
+
+
+Outputs:
+  Vpc:
+    Value: !Ref Vpc
+    Export:
+      Name: Vpc
+
+  SgIngress:
+    Value: !Ref SgIngress
+    Export:
+      Name: SgIngress
+
+  SubnetPublicIngress2A:
+    Value: !Ref SubnetPublicIngress2A
+    Export:
+      Name: SubnetPublicIngress2A
+
+  SubnetPublicIngress2B:
+    Value: !Ref SubnetPublicIngress2B
+    Export:
+      Name: SubnetPublicIngress2B
+
+  SubnetPrivateBackend2A:
+    Value: !Ref SubnetPrivateBackend2A
+    Export:
+      Name: SubnetPrivateBackend2A
+
+  SubnetPrivateBackend2B:
+    Value: !Ref SubnetPrivateBackend2B
+    Export:
+      Name: SubnetPrivateBackend2B
+
+  SgBackend:
+    Value: !Ref SgBackend
+    Export:
+      Name: SgBackend
+
+

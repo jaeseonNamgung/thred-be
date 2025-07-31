@@ -1,0 +1,27 @@
+version: '3.8'
+services:
+  redis:
+    container_name: thred_redis
+    image: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - thred_network
+  database:
+    container_name: thred_db
+    restart: on-failure
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: thRed2024
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE: thRedDb
+    ports:
+      - "3307:3306"
+    volumes:
+      - /Users/namgungjaeseon/mysql_data:/var/lib/mysql
+    networks:
+      - thred_network
+networks:
+  thred_network:
+    driver: bridge
+

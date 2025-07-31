@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: The template used to create an ECS Service from the ECS Console.
+Resources:
+  EcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !ImportValue EcsCluster
+      CapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Base: 0
+          Weight: 1
+      TaskDefinition: !ImportValue EcsTaskDef
+      ServiceName: thred-ecs-service
+      SchedulingStrategy: REPLICA
+      DesiredCount: 1
+      HealthCheckGracePeriodSeconds: 15
+      AvailabilityZoneRebalancing: ENABLED
+      LoadBalancers:
+        - ContainerName: thred-ecs-backend-container
+          ContainerPort: 8080
+          TargetGroupArn: !ImportValue TargetGroup
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !ImportValue SgBackend
+          Subnets:
+            - !ImportValue SubnetPrivateBackend2A
+            - !ImportValue SubnetPrivateBackend2B
+      DeploymentConfiguration:
+        MaximumPercent: 200
+        MinimumHealthyPercent: 100
+      PlatformVersion: LATEST
+      DeploymentController:
+        Type: CODE_DEPLOY
+      ServiceConnectConfiguration:
+        Enabled: false
+      ServiceRegistries:
+        - RegistryArn: !GetAtt ServiceDiscoveryService.Arn
+      Tags: []
+      EnableECSManagedTags: true
+    DependsOn:
+      - ServiceDiscoveryNamespace
+      - ServiceDiscoveryService
+
+  # Cloud Map 네임스페이스 (내부 DNS)
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    DeletionPolicy: Delete
+    Properties:
+      Name: thred-local
+      Vpc: !ImportValue Vpc
+
+  # Cloud Map 서비스
+  ServiceDiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    DeletionPolicy: Delete
+    Properties:
+      Name: thred-ecs-service
+      DnsConfig:
+        DnsRecords:
+          - Type: A
+            TTL: 15
+      NamespaceId: !Ref ServiceDiscoveryNamespace
+      HealthCheckCustomConfig:
+        FailureThreshold: 3
+    DependsOn:
+      - ServiceDiscoveryNamespace
+
+

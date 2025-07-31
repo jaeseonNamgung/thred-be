@@ -1,0 +1,70 @@
+Resources:
+  # Alb 설정
+  Alb:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: thred-alb
+      Scheme: internet-facing
+      Type: application
+      IpAddressType: ipv4
+      SecurityGroups:
+        - !ImportValue SgIngress
+      Subnets:
+        - !ImportValue SubnetPublicIngress2A
+        - !ImportValue SubnetPublicIngress2B
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: '60'
+        - Key: deletion_protection.enabled
+          Value: 'false'
+
+  # Target Group 설정
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: thred-target-group
+      Protocol: HTTP
+      Port: 8080
+      VpcId: !ImportValue Vpc
+      HealthCheckEnabled: true
+      HealthCheckPort: 8080
+      HealthCheckPath: /actuator/health
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      HealthCheckTimeoutSeconds: 60
+      HealthCheckIntervalSeconds: 100
+      Matcher:
+        HttpCode: '200'
+      TargetType: ip
+
+  # 리스너 설정
+  HttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref Alb
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn: !Ref TargetGroup
+
+Outputs:
+  Alb:
+    Value: !Ref Alb
+    Export:
+      Name: Alb
+
+  TargetGroup:
+    Value: !Ref TargetGroup
+    Export:
+      Name: TargetGroup
+
+  HttpListener:
+    Value: !Ref HttpListener
+    Export:
+      Name: HttpListener
+
+

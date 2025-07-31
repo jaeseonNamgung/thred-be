@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <!-- 기본 LOG 패턴 -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr([%-5level]){bold} %clr(%d{yyyy-MM-dd HH:mm:ss, Asia/Seoul}){cyan} : %clr(%logger{5}){blue} ===> %msg%n"/>
+    <property name="FILE_LOG_PATTERN"
+              value="[%d{yyyy-MM-dd HH:mm:ss, Asia/Seoul}:%-3relative] %-5level ${PID:-} --- [%15.15thread] %-40.40logger{36} ===> %msg%n"/>
+
+    <!-- STDOUT Appender -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+
+    <!-- FILE Appender -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/${LOG_FILE_NAME}.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE_NAME}.%d{yyyy-MM-dd, Asia/Seoul}.log</fileNamePattern>
+            <maxHistory>${LOG_MAX_HISTORY}</maxHistory>
+            <totalSizeCap>${LOG_TOTAL_SIZE_CAP}</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- Dev Profile -->
+    <springProfile name="dev">
+        <property name="LOG_PATH" value="./logs"/>
+        <property name="LOG_FILE_NAME" value="dev-log"/>
+        <property name="LOG_MAX_HISTORY" value="30"/>
+        <property name="LOG_TOTAL_SIZE_CAP" value="10MB"/>
+
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+            <!--<appender-ref ref="FILE"/>-->
+        </root>
+        <logger name="com.thred.datingapp" level="DEBUG">
+            <appender-ref ref="STDOUT"/>
+            <!--<appender-ref ref="FILE"/>-->
+        </logger>
+    </springProfile>
+
+    <!-- Local Profile -->
+    <springProfile name="local">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="com.thred.datingapp" level="DEBUG"/>
+    </springProfile>
+    <springProfile name="test">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="com.thred.datingapp" level="DEBUG"/>
+    </springProfile>
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="STDOUT"/>
+        </root>
+        <logger name="com.thred.datingapp" level="DEBUG"/>
+    </springProfile>
+
+</configuration>

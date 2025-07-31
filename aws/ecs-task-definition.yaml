@@ -1,0 +1,46 @@
+Resources:
+  EcsTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: thred-ecs-task-def
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '256'
+      Memory: '512'
+      NetworkMode: awsvpc
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      TaskRoleArn: arn:aws:iam::535002874832:role/ecsTaskRole
+      ExecutionRoleArn: arn:aws:iam::535002874832:role/ecsTaskExecutionRole
+      ContainerDefinitions:
+        - Name: thred-ecs-backend-container
+          Image: 535002874832.dkr.ecr.ap-northeast-2.amazonaws.com/thred/backend:latest
+          Cpu: 128
+          Memory: 512
+          MemoryReservation: 256
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+              AppProtocol: http
+              Name: thred-ecs-backend-port
+          Essential: true # 해당 컨테이너가 정상적으로 실행되지 않거나 중지되면, 전체 태스크가 실패한 것으로 간주
+          Environment:
+            - Name: SPRING_PROFILES_ACTIVE
+              Value: prod
+          ReadonlyRootFilesystem: false
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/thred-ecs-task-def
+              awslogs-region: ap-northeast-2
+              awslogs-stream-prefix: ecs
+              awslogs-create-group: "true"
+              mode: non-blocking
+              max-buffer-size: 25m
+Outputs:
+  EcsTaskDef:
+    Value: !Ref EcsTaskDef
+    Export:
+      Name: EcsTaskDef

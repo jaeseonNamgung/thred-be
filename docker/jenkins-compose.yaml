@@ -1,0 +1,11 @@
+services:
+  jenkins:
+    container_name: jenkins
+    image: jenkins/jenkins:lts
+    restart: on-failure
+    volumes:
+      - /Users/namgungjaeseon/my-work/my-project/thred/volums/jenkins:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "7777:8080"
+    
