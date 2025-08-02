@@ -46,7 +46,7 @@ public record JoinUserRequest(
       LocalDate birthLocalDate = LocalDate.parse(request.birth(), formatter);
 
       return User.builder()
-                .socialId(request.socialId)
+                .socialId(request.socialId())
                 .role(Role.USER)
                 .username(request.username())
                 .birth(birthLocalDate)

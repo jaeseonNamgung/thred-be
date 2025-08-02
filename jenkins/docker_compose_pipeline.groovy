@@ -13,8 +13,8 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry([credentialsId: "dockerAccessTokenId", url: ""]) {
-                        sh 'docker buildx create --use'
-                        sh 'docker buildx build --platform=linux/amd64,linux/arm64 -t namgungjaeseon/thred_app:dev . --push'
+                        sh 'docker build -t namgungjaeseon/thred_app:dev .'
+                        sh 'docker push namgungjaeseon/thred_app:dev'
                     }
                 }
             }

@@ -178,7 +178,6 @@ public class UserFixture {
                .role(Role.USER)
                .gender(Gender.MALE)
                .email("testuser" + count + "@example.com")
-               .password("password" + count)
                .introduce("나는 테스트 유저 " + count)
                .code("CODE" + count)
                .inputCode("INPUT" + count)

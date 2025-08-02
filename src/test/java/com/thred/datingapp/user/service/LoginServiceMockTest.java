@@ -145,7 +145,7 @@ class LoginServiceMockTest {
     given(oAuthService.getKakaoUserInfo(anyString())).willReturn(UserFixture.createKakaoDto());
     given(userService.getUserBySocialId(anyLong())).willReturn(Optional.of(user));
     given(reportService.getTotalRemainingSuspensionDays(anyLong())).willReturn(0);
-    given(jwtUtils.createJwt(anyString(), anyString(), anyLong(), anyString(), anyLong()))
+    given(jwtUtils.createJwt(anyString(), anyLong(), anyLong(), anyString(), anyLong()))
         .willReturn("accessToken").willReturn("refreshToken");
 
     // when
@@ -159,7 +159,7 @@ class LoginServiceMockTest {
     then(oAuthService).should().getKakaoUserInfo(anyString());
     then(userService).should().getUserBySocialId(anyLong());
     then(reportService).should().getTotalRemainingSuspensionDays(anyLong());
-    then(jwtUtils).should(times(2)).createJwt(anyString(), anyString(), anyLong(), anyString(), anyLong());
+    then(jwtUtils).should(times(2)).createJwt(anyString(), anyLong(), anyLong(), anyString(), anyLong());
   }
 
 }
