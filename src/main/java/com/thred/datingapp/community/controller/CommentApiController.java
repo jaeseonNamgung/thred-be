@@ -23,6 +23,7 @@ public class CommentApiController {
           @RequestBody CommentRequest commentRequest,
           @Login Long userId
   ) {
+    log.info("[API CALL] /api/comment/create/{communityId} - 댓글 저장 요청");
     log.debug("[createComment] communityId: {}", communityId);
     log.debug("[createComment] userId: {}", userId);
     log.debug("[createComment] commentRequest: {}", commentRequest);
@@ -35,6 +36,7 @@ public class CommentApiController {
           @PathVariable("commentId") Long commentId,
           @Login Long userId
   ) {
+    log.info("[API CALL] /api/comment/add/like/{communityId}/{commentId} - 댓글 좋아요 추가 요청");
     log.debug("[addLike] communityId: {}", communityId);
     log.debug("[addLike] commentId: {}", commentId);
     log.debug("[addLike] userId: {}", userId);
@@ -47,6 +49,7 @@ public class CommentApiController {
           @PathVariable("commentId") Long commentId,
           @Login Long userId
   ) {
+    log.info("[API CALL] /api/comment/delete/like/{commentId} - 댓글 좋아요 삭제 요청");
     log.debug("[deleteLike] commentId: {}", commentId);
     log.debug("[deleteLike] userId: {}", userId);
     return commentService.deleteCommentLike(commentId, userId) ?
@@ -58,6 +61,7 @@ public class CommentApiController {
           @PathVariable("commentId") Long commentId,
           @Login Long userId
   ) {
+    log.info("[API CALL] /api/comment/delete/{commentId} - 댓글 삭제 요청");
     log.debug("[deleteComment] commentId: {}", commentId);
     log.debug("[deleteComment] userId: {}", userId);
       return ApiDataResponse.ok(commentService.deleteComment(commentId, userId));

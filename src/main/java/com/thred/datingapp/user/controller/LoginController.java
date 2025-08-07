@@ -14,11 +14,13 @@ import com.thred.datingapp.user.service.LoginService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.web.bind.annotation.*;
 
 import static com.thred.datingapp.user.properties.JwtProperties.*;
 
+@Slf4j
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -30,6 +32,8 @@ public class LoginController {
 
     @PostMapping("/login/reissue")
     public ApiDataResponse<ProcessingResultResponse> reissue(HttpServletResponse response, @CookieValue(name="refresh",required = false) String refresh){
+        log.info("[API CALL] /api/login/reissue - 토큰 재발급 요청");
+        log.debug("[reissue] refresh: {}", refresh);
         Tokens tokens = loginService.reissue(refresh);
         jwtUtils.addAccessToken(response,tokens.accessToken());
         cookieUtils.addCookie(response,REFRESH_TOKEN,tokens.refreshToken());
@@ -38,25 +42,21 @@ public class LoginController {
 
     @PostMapping("/logout")
     public ApiDataResponse<ProcessingResultResponse> logout(@Login Long userId,HttpServletResponse response){
+        log.info("[API CALL] /api/logout - 로그아웃 요청");
+        log.debug("[logout] userId: {}", userId);
         loginService.logout(userId);
         cookieUtils.deleteCookie(response,REFRESH_TOKEN);
         return ApiDataResponse.ok(ProcessingResultResponse.from(true));
     }
 
-    @PostMapping("/login")
-    public ApiDataResponse<LoginResponse> login(HttpServletRequest request){
-        Long userId = (Long) request.getAttribute("userId");
-        String refreshToken = (String) request.getAttribute(REFRESH_TOKEN);
-        loginService.saveRefreshToken(userId,refreshToken);
-        return ApiDataResponse.ok(loginService.getLoginResponse(userId));
-    }
-
     @PostMapping("/oauth/login")
     public ApiDataResponse<LoginResponse> oAuthLogin(@RequestBody OAuthLoginRequest oAuthLoginRequest, HttpServletResponse response){
+        log.info("[API CALL] /api/oauth/login - OAuth 로그인 요청");
+        log.debug("[oAuthLogin] oAuthLoginRequest: {}", oAuthLoginRequest);
         OAuthLoginResponse oAuthLoginResponse = loginService.loginWithOAuth(oAuthLoginRequest);
-        if(oAuthLoginResponse.status() && oAuthLoginResponse.certification()) {
+        if(oAuthLoginResponse.status()) {
             if(Strings.isNotBlank(oAuthLoginResponse.accessToken())) {
-                response.setHeader(HEADER_STRING, oAuthLoginResponse.accessToken());
+                response.setHeader(HEADER_STRING, TOKEN_PREFIX + oAuthLoginResponse.accessToken());
                 response.setHeader(USER_ID, oAuthLoginResponse.userId().toString());
             }
             if (Strings.isNotBlank(oAuthLoginResponse.refreshToken())) {

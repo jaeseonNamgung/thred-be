@@ -57,18 +57,21 @@ public class MemberController {
 
     @GetMapping("/email")
     public ApiDataResponse<DuplicateResponse> checkEmail(@RequestParam("email") String email) {
+        log.info("[API CALL] /api/user/email - 이메일 중복검사 요청");
         log.debug("[checkEmail] email = {}", email);
         return ApiDataResponse.ok(DuplicateResponse.of(userService.checkDuplicateEmail(email)));
     }
 
     @GetMapping("/username")
     public ApiDataResponse<DuplicateResponse> checkName(@RequestParam("username") String username) {
+        log.info("[API CALL] /api/user/username - 닉네임 중복 검사 요청");
         log.debug("[checkName] username = {}", username);
         return ApiDataResponse.ok(DuplicateResponse.of(userService.checkDuplicateName(username)));
     }
 
     @GetMapping("/code")
     public ApiDataResponse<DuplicateResponse> checkCode(@RequestParam("code") String code) {
+        log.info("[API CALL] /api/user/code - 인증 코드 중복 검사 요청");
         log.debug("[checkCode] code = {}", code);
         return ApiDataResponse.ok(DuplicateResponse.of(userService.checkCode(code)));
     }
@@ -78,6 +81,7 @@ public class MemberController {
                                                    @Valid @RequestPart("details") JoinDetailsRequest details,
                                                    @RequestPart("mainProfile") MultipartFile mainProfile,
                                                    @RequestPart("files") List<MultipartFile> files) {
+        log.info("[API CALL] /api/user/join - 회원가입 요청");
         log.debug("[join] user = {}", user);
         log.debug("[join] details = {}", details);
         log.debug("[join] mainProfile = {}", mainProfile);
@@ -99,6 +103,7 @@ public class MemberController {
                                                             @RequestPart(required = false,name = "mainProfile") MultipartFile mainProfile,
                                                             @RequestParam(required = false,name = "deleteFileIds") List<Long> deleteFileIds,
                                                             @RequestPart(required = false, name = "extraChangedProfiles") List<MultipartFile> extraChangedProfiles) {
+        log.info("[API CALL] /api/user/rejoin - 회원 재가입 요청");
         log.debug("[rejoin] user = {}", user);
         log.debug("[rejoin] details = {}", details);
         log.debug("[rejoin] mainChange = {}", mainChange);
@@ -112,6 +117,7 @@ public class MemberController {
     @PostMapping("/block")
     public ApiDataResponse<ProcessingResultResponse> setBlockNumber(@RequestBody @Valid BlockNumbersRequest request,
                                                                     @Login Long userId) {
+        log.info("[API CALL] /api/user/block - 전화번호 차단 요청");
         log.debug("[setBlockNumber] userId = {}", userId);
         log.debug("[setBlockNumber] blockNumbersRequest = {}", request);
         userService.setBlockNumber(userId, request.numbers());
@@ -120,12 +126,14 @@ public class MemberController {
 
     @GetMapping("/block")
     public ApiDataResponse<BlockNumbersResponse> getBlockNumber(@Login Long userId) {
+        log.info("[API CALL] /api/user/block - 전화번호 차단 목록 조회 요청");
         log.debug("[getBlockNumber] userId = {}", userId);
         return ApiDataResponse.ok(userService.getBlockNumber(userId));
     }
 
     @GetMapping("/judgments")
     public ApiDataResponse<JudgmentResponse> getJoinReviewResponse(@Login Long userId) {
+        log.info("[API CALL] /api/user/judgments - 회원 심사 조회 요청");
         log.debug("[getJoinJudgmentResponse] userId = {}", userId);
         Review review = reviewService.getJoinReviewByUserId(userId);
         JoinTotalDetails joinDetails = userService.getJoinDetails(userId);
@@ -136,6 +144,7 @@ public class MemberController {
     @GetMapping("/{userId}/details")
     public ApiDataResponse<UserDetailsResponse> getUserProfile(@PathVariable("userId") Long userId,
                                                                @Login Long loginId) {
+        log.info("[API CALL] /api/user/{userId}/details - 회원 상세 조회 요청");
         log.debug("[getUserProfile] loginId = {}", loginId);
         log.debug("[getUserProfile] userId = {}", userId);
         UserDetailsResponse allDetails = userService.getAllDetails(userId);
@@ -145,6 +154,7 @@ public class MemberController {
 
     @GetMapping("/details")
     public ApiDataResponse<JoinTotalDetails> getLoginUserDetails(@Login Long userId) {
+        log.info("[API CALL] /api/user/details - 로그인 회원 상세 조회 요청");
         log.debug("[getLoginUserDetails] userId = {}", userId);
         return ApiDataResponse.ok(userService.getJoinDetails(userId));
     }
@@ -152,6 +162,7 @@ public class MemberController {
     @PostMapping("/details")
     public ApiDataResponse<JoinTotalDetails> editMainDetails(@RequestBody @Valid EditMainDetailsRequest request,
                                                              @Login Long loginId) {
+        log.info("[API CALL] /api/user/details - 회원 상세 정보 수정 요청");
         log.debug("[editMainDetails] userId = {}", loginId);
         log.debug("[editMainDetails] EditMainDetailsRequest = {}", request);
         userService.updateUserAndDetails(loginId, request.questionChange(), request.introduceChange(), request.user(),
@@ -161,6 +172,7 @@ public class MemberController {
 
     @GetMapping("/profile")
     public ApiDataResponse<ProfilesResponse> getProfiles(@Login Long loginId) {
+        log.info("[API CALL] /api/user/profile - 프로필 조회 요청");
         log.debug("[getProfiles] userId = {}", loginId);
         User user = userService.getUserById(loginId);
         List<ProfileResponse> profiles = userService.getProfiles(loginId);
@@ -168,23 +180,25 @@ public class MemberController {
     }
 
     @PostMapping("/profile")
-    public ApiDataResponse<ProcessingResultResponse> editProfiles(@Login Long loginId,
+    public ApiDataResponse<ProcessingResultResponse> editProfiles(@Login Long userId,
                                                                   @RequestParam boolean mainChange,
                                                                   @RequestPart(required = false) MultipartFile mainProfile,
                                                                   @RequestParam(required = false) List<Long> changedProfileIds,
                                                                   @RequestPart(required = false) List<MultipartFile> changedExtraProfiles) {
-        log.debug("[editProfiles] userId = {}", loginId);
+        log.info("[API CALL] /api/user/profile - 프로필 수정 요청");
+        log.debug("[editProfiles] userId = {}", userId);
         log.debug("[editProfiles] mainChange = {}", mainChange);
         log.debug("[editProfiles] mainProfile = {}", mainProfile);
         log.debug("[editProfiles] changedProfileIds = {}", changedProfileIds);
         log.debug("[editProfiles] changedExtraProfiles = {}", changedExtraProfiles);
-        userService.sendEditProfilesRequest(loginId, mainChange, mainProfile, changedProfileIds, changedExtraProfiles);
+        userService.sendEditProfilesRequest(userId, mainChange, mainProfile, changedProfileIds, changedExtraProfiles);
         return ApiDataResponse.ok(ProcessingResultResponse.from(true));
     }
 
     @PostMapping("/number")
     public ApiDataResponse<ProcessingResultResponse> editUserNumber(@Login Long loginId, @RequestBody @Valid
     ChangePhoneNumberRequest request) {
+        log.info("[API CALL] /api/user/number - 전화번호 수정 요청");
         log.debug("[editUserNumber] userId = {}", loginId);
         log.debug("[editUserNumber] ChangePhoneNumberRequest = {}", request);
         userService.changePhoneNumber(loginId, request.number());
@@ -194,6 +208,7 @@ public class MemberController {
     @PostMapping("/address")
     public ApiDataResponse<ProcessingResultResponse> editAddress(@Login Long loginId, @RequestBody @Valid
     ChangeAddressRequest request) {
+        log.info("[API CALL] /api/user/address - 주소 수정 요청");
         log.debug("[editAddress] userId = {}", loginId);
         log.debug("[editAddress] ChangeAddressRequest = {}", request);
         userService.changeAddress(loginId, request.city(), request.province());
@@ -202,6 +217,7 @@ public class MemberController {
 
     @PostMapping("/withdraw")
     public ApiDataResponse<ProcessingResultResponse> withdrawUser(@Login Long userId) {
+        log.info("[API CALL] /api/user/withdraw - 회원 탈퇴 요청");
         log.debug("[deleteUser] userId = {}", userId);
         quitService.updateQuitStatus(userId);
         return ApiDataResponse.ok(ProcessingResultResponse.from(true));

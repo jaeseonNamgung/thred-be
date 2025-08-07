@@ -27,6 +27,7 @@ public class MainController {
 
   @GetMapping("/answer/{receiverId}")
   public ApiDataResponse<AnswerAllResponse> getSubmittedAnswer(@PathVariable("receiverId") Long receiverId, @Login Long senderId) {
+    log.info("[API CALL] /api/answer/{receiverId} - 답변 조회 요청");
     log.debug("[getAnswer] senderId = {}", senderId);
     log.debug("[getAnswer] receiverId = {}", receiverId);
     AnswerAllResponse answerAllResponse = answerService.getSubmittedAnswer(senderId, receiverId);
@@ -37,6 +38,7 @@ public class MainController {
   public ApiDataResponse<ProcessingResultResponse> saveAnswer(@RequestBody @Valid AnswerRequest answerRequest,
                                                               @PathVariable("receiverId") Long receiverId,
                                                               @Login Long senderId) {
+    log.info("[API CALL] /api/answer/{receiverId} - 답변 저장 요청");
     log.debug("[saveAnswer] senderId = {}", senderId);
     log.debug("[saveAnswer] receiverId = {}", receiverId);
     log.debug("[saveAnswer] answerRequest = {}", answerRequest);
@@ -48,6 +50,7 @@ public class MainController {
   public ApiDataResponse<PageResponse<CardOpenResponse>> getOpenCard(@Login Long userId,
                                                              @RequestParam(name = "pageLastId") long pageLastId,
                                                              @RequestParam("pageSize") int pageSize) {
+    log.info("[API CALL] /api/card/open - 오픈 카드 조회 요청");
     log.debug("[getTodayCard] userId = {}", userId);
     return ApiDataResponse.ok(cardService.getOpenCards(userId, pageLastId, pageSize));
   }
@@ -57,6 +60,7 @@ public class MainController {
                                                                              @RequestParam(name = "city") String city,
                                                                              @RequestParam(name = "pageLastId") long pageLastId,
                                                                              @RequestParam("pageSize") int pageSize) {
+    log.info("[API CALL] /api/card/today - 오늘의 카드 조회 요청");
     log.debug("[getTodayProfiles] loginId = {}", userId);
     log.debug("[getTodayProfiles] city = {}", city);
     log.debug("[getTodayProfiles] pageLastId = {}", pageLastId);
@@ -66,6 +70,7 @@ public class MainController {
 
   @PostMapping("/card/open/{profileUserId}")
   public ApiDataResponse<ApiStatusResponse> saveCardOpen(@Login Long openerId, @PathVariable("profileUserId") Long profileUserId) {
+    log.info("[API CALL] /api/card/open/{profileUserId} - 오픈 카드 저장 요청");
     log.debug("[saveCardOpen] openerId = {}", openerId);
     log.debug("[saveCardOpen] profileUserId = {}", profileUserId);
     cardService.saveCardOpen(openerId, profileUserId);
@@ -79,6 +84,7 @@ public class MainController {
    */
   @DeleteMapping("/card/open/{profileUserId}")
   public ApiDataResponse<ApiStatusResponse> deleteCardOpen(@Login Long openerId, @PathVariable("profileUserId") Long profileUserId) {
+    log.info("[API CALL] /api/card/open/{profileUserId} - 오픈 카드 삭제 요청");
     log.debug("[deleteCardOpen] openerId = {}", openerId);
     log.debug("[deleteCardOpen] profileUserId = {}", profileUserId);
     cardService.deleteCardOpen(openerId, profileUserId);

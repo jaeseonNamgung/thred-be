@@ -31,6 +31,7 @@ public class CommunityApiController {
       @RequestPart("communityRequest") CommunityRequest communityRequest,
       @RequestPart(name = "images", required = false) List<MultipartFile> multipartFiles
   ){
+    log.info("[API CALL] /api/community/create - 게시글 저장 요청");
     log.debug("[createCommunity] userId: {}", userId);
     log.debug("[createCommunity] communityRequest: {}", communityRequest);
     log.debug("[createCommunity] multipartFiles: {}", multipartFiles);
@@ -43,6 +44,7 @@ public class CommunityApiController {
       @RequestParam(defaultValue = "실시간", name = "communityType") String CommunityTypeValue,
       @RequestParam("pageSize") int pageSize) {
 
+    log.info("[API CALL] /api/community/all - 게시글 전체 조회 요청");
     log.debug("[getAllCommunity] CommunityTypeValue: {}", CommunityTypeValue);
     log.debug("[getAllCommunity] pageLastId: {}", pageLastId);
     log.debug("[getAllCommunity] pageSize: {}", pageSize);
@@ -55,6 +57,7 @@ public class CommunityApiController {
           @RequestParam(name = "pageLastId") Long pageLastId,
           @RequestParam("pageSize") int pageSize) {
 
+    log.info("[API CALL] /api/community/get/user - 특정 회원 게시글 전체 조회 요청");
     log.debug("[getAllUserCommunity] userId: {}", userId);
     log.debug("[getAllUserCommunity] pageLastId: {}", pageLastId);
     log.debug("[getAllUserCommunity] pageSize: {}", pageSize);
@@ -67,6 +70,7 @@ public class CommunityApiController {
           @Login Long userId
           ) {
 
+    log.info("[API CALL] /api/community/get/{communityId} - 특정 게시글 조회 요청");
     log.debug("[getCommunity] userId: {}", userId);
     log.debug("[getCommunity] communityId: {}", communityId);
     return ApiDataResponse.ok(communityService.getCommunity(communityId, userId));
@@ -78,6 +82,7 @@ public class CommunityApiController {
           @RequestPart(name = "communityRequest") CommunityRequest communityUpdateRequest,
           @RequestPart(name = "images", required = false) List<MultipartFile> multipartFiles
   ){
+    log.info("[API CALL] /api/community/update/{communityId} - 게시글 수정 요청");
     log.debug("[updateCommunity] communityId: {}", communityId);
     log.debug("[updateCommunity] communityUpdateRequest: {}", communityUpdateRequest);
     log.debug("[updateCommunity] multipartFiles: {}", multipartFiles);
@@ -88,6 +93,7 @@ public class CommunityApiController {
   public ApiDataResponse<Boolean> deleteCommunity(
           @PathVariable("communityId") Long communityId,
           @Login Long userId) {
+    log.info("[API CALL] /api/community/delete/{communityId} - 게시글 삭제 요청");
     log.debug("[deleteCommunity] communityId: {}", communityId);
     log.debug("[deleteCommunity] userId: {}", userId);
     return ApiDataResponse.ok(communityService.deleteCommunity(communityId, userId));
@@ -98,6 +104,7 @@ public class CommunityApiController {
           @PathVariable("communityId") Long communityId,
           @Login Long userId) {
 
+    log.info("[API CALL] /api/community/add/like/{communityId} - 게시글 좋아요 추가 요청");
     log.debug("[addLike] communityId: {}", communityId);
     log.debug("[addLike] userId: {}", userId);
     return communityService.addCommunityLike(communityId, userId) ?
@@ -108,7 +115,7 @@ public class CommunityApiController {
   public ApiDataResponse<Boolean> deleteLike(
           @PathVariable("communityId") Long communityId,
           @Login Long userId) {
-
+    log.info("[API CALL] /api/community/delete/like/{communityId} - 게시글 좋아요 삭제 요청");
     log.debug("[deleteLike] communityId: {}", communityId);
     log.debug("[deleteLike] userId: {}", userId);
     return communityService.deleteCommunityLike(communityId, userId) ?

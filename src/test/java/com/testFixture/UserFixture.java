@@ -16,11 +16,19 @@ import static com.thred.datingapp.common.entity.user.field.Smoke.SMOKER;
 import com.thred.datingapp.common.entity.card.Card;
 import com.thred.datingapp.common.entity.user.*;
 import com.thred.datingapp.common.entity.user.field.*;
+import com.thred.datingapp.user.api.request.JoinDetailsRequest;
+import com.thred.datingapp.user.api.request.JoinUserRequest;
 import com.thred.datingapp.user.api.request.OAuthLoginRequest;
 import com.thred.datingapp.user.dto.KakaoDto;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class UserFixture {
   public static User createAdmin() {
@@ -187,6 +195,59 @@ public class UserFixture {
                .address(Address.of("seoul", ""))
                .mainProfile("profile" + count + ".jpg")
                .build();
+  }
+
+  public static JoinUserRequest createJoinUserRequest(int index) {
+    return new JoinUserRequest(
+        (long) index,
+        "user" + index + "@example.com",
+        index % 2 == 0 ? "남성" : "여성",
+        "유저" + index,
+        "11",
+        "서울특별시",
+        "199" + index + "-01-01",
+        "테스트 자기소개 " + index,
+        "Q1_" + index,
+        "Q2_" + index,
+        "Q3_" + index,
+        "0101234000" + index,
+        "code" + index,
+        index % 2 == 0 ? "이성" : "동성",
+        "fcm_token_" + index
+    );
+  }
+
+  public static JoinDetailsRequest createJoinDetailsRequest(int index) {
+    return new JoinDetailsRequest(
+        170 + index,                            // height
+        index % 2 == 0 ? "가끔 마셔요" : "애주가",   // drink
+        index % 2 == 0 ? "비흡연" : "흡연",         // smoke
+        "무교",                                  // belief
+        index % 2 == 0 ? "많이 있어요" : "아예 없어요",          // oppositeFriends
+        "직장인",                                // job
+        "ISFJ",                                 // mbti
+        50 + index                              // temperature
+    );
+  }
+
+  public static MultipartFile createMultipartFile(int index) {
+    return new MockMultipartFile(
+        "mainProfile",
+        "main_profile_" + index + ".jpg",
+        "image/jpeg",
+        ("main-profile-content-" + index).getBytes(StandardCharsets.UTF_8)
+    );
+  }
+
+  public static List<MultipartFile> createMultipartFiles(int count) {
+    return IntStream.range(0, count)
+                    .mapToObj(i -> new MockMultipartFile(
+                        "file" + i,
+                        "profile_" + i + ".jpg",
+                        "image/jpeg",
+                        ("profile-file-content-" + i).getBytes(StandardCharsets.UTF_8)
+                    ))
+                    .collect(Collectors.toList());
   }
 
   public static OAuthLoginRequest createOAuthLoginRequest() {

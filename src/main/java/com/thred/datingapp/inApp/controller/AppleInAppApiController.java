@@ -20,6 +20,7 @@ public class AppleInAppApiController {
 
     @PostMapping("/notification/v2")
     public ApiDataResponse<Boolean> inAppNotification(@RequestBody ResponseBodyV2 responseBodyV2){
+        log.info("[API CALL] /api/apple/notification/v2 - 애플 Notification 요청");
         log.debug("[inAppNotification] responseBodyV2 = {}", responseBodyV2);
         return ApiDataResponse.ok(appleInAppService.processAppleInAppNotification(responseBodyV2.getSignedPayload()));
     }

@@ -25,6 +25,7 @@ public class ChatRoomApiController {
     public ApiDataResponse<ChatRoomResponse> createChatRoom(
             @Login Long userId,
             @PathVariable("receiverId") Long receiverId) {
+        log.info("[API CALL] /api/chat/room/create/{receiverId} - 채팅방 저장 요청");
         log.debug("[createChatRoom] userId: {}", userId);
         log.debug("[createChatRoom] receiverId: {}", receiverId);
         return ApiDataResponse.ok(chatRoomService.createChatRoom(userId, receiverId));
@@ -35,6 +36,7 @@ public class ChatRoomApiController {
         @Login Long userId,
         @RequestParam("pageLastId") Long pageLastId,
         @RequestParam("pageSize")int pageSize) {
+        log.info("[API CALL] /api/chat/room/all - 채팅방 전체 조회 요청");
         log.debug("[getAllChatRooms] userId: {}", userId);
         log.debug("[getAllChatRooms] pageLastId: {}", pageLastId);
         log.debug("[getAllChatRooms] pageSize: {}", pageSize);
@@ -43,6 +45,7 @@ public class ChatRoomApiController {
 
     @DeleteMapping("/delete/{chatRoomId}")
     public ApiDataResponse<Boolean> deleteChatRoom(@PathVariable(name = "chatRoomId") Long chatRoomId) {
+        log.info("[API CALL] /api/chat/room/delete/{chatRoomId} - 특정 채팅방 삭제 요청");
         log.debug("[deleteChatRoom] chatRoomId: {}", chatRoomId);
         return ApiDataResponse.ok(chatRoomService.deleteChatRoom(chatRoomId));
     }

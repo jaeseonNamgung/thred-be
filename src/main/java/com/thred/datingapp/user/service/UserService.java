@@ -4,6 +4,7 @@ import static com.thred.datingapp.user.properties.RedisProperties.EDIT_PROFILE_K
 import static com.thred.datingapp.user.properties.RedisProperties.EDIT_QUESTION_KEY;
 
 import com.thred.datingapp.admin.repository.ReviewRepository;
+import com.thred.datingapp.admin.service.ReviewService;
 import com.thred.datingapp.chat.dto.NotificationDto;
 import com.thred.datingapp.chat.repository.FcmTokenRepository;
 import com.thred.datingapp.common.service.NotificationService;
@@ -51,9 +52,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * user와 details를 통합적으로 관리(1대1 관계라서 detailsService를 따로 만들지 않았습니다!)
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -110,7 +108,7 @@ public class UserService {
     // 4. 회원 프로필 이미지 저장
     saveMultipartFileAndPictures(files, newUser);
     // 5. Judgment 저장
-    makeJudgment(newUser, ReviewType.JOIN);
+    makeReview(newUser, ReviewType.JOIN);
     // 6. FCM 정보 저장
     FcmToken fcmToken = FcmToken.builder()
                                 .token(joinUserRequest.fcmToken())
@@ -142,7 +140,7 @@ public class UserService {
     Question question = RejoinUserRequest.fromEntity(rejoinUserRequest, existingUser);
     questionRepository.save(question);
     // 6. Judgment 생성
-    makeJudgment(existingUser, ReviewType.JOIN);
+    makeReview(existingUser, ReviewType.JOIN);
     log.info("[rejoin] 재가입 요청 완료 ===> email: {}", rejoinUserRequest.email());
     // 7. FCM 알림 전송
     sendNotificationToAdmin(USER_REGISTRATION_REQUEST_MESSAGE);
@@ -220,7 +218,7 @@ public class UserService {
   }
 
   @Transactional
-  public void sendEditProfilesRequest(Long id, boolean mainChange, MultipartFile mainProfile, List<Long> changedProfileIds,
+  public void sendEditProfilesRequest(Long userId, boolean mainChange, MultipartFile mainProfile, List<Long> changedProfileIds,
                                       List<MultipartFile> changedExtraProfiles) {
     Map<String, String> profilesInfo = new HashMap<>();
     if (changedExtraProfiles != null) {
@@ -237,23 +235,23 @@ public class UserService {
 
     List<Picture> existImages;
     if (changedProfileIds != null && !changedProfileIds.isEmpty()) {
-      existImages = pictureRepository.findAllByUserIdAndIdNotIn(id, changedProfileIds);
+      existImages = pictureRepository.findAllByUserIdAndIdNotIn(userId, changedProfileIds);
     } else {
-      existImages = pictureRepository.findAllByUserId(id);
+      existImages = pictureRepository.findAllByUserId(userId);
     }
 
     List<String> existImagePaths = existImages.stream()
                                               .map(Picture::getS3Path)
                                               .toList();
     EditProfileRequest updateInfo = EditProfileRequest.of(mainChange, main, changedProfileIds, existImagePaths, profilesInfo);
-    Optional<Review> userCheck = reviewRepository.findByUserIdAndReviewType(id, ReviewType.EDIT_PROFILE);
+    Optional<Review> userCheck = reviewRepository.findByUserIdAndReviewType(userId, ReviewType.EDIT_PROFILE);
 
     if (userCheck.isPresent()) {
       Review review = userCheck.get();
       if (review.getReviewStatus() == ReviewStatus.FAIL || review.getReviewStatus() == ReviewStatus.PENDING) {
         // 재심사인경우 s3 기존 이미지들 삭제
-        log.info("[sendEditProfilesRequest] 기존 심사 요청 기록 삭제 ===> userId: {}", id);
-        EditProfileRequest before = (EditProfileRequest) redisUtils.get(EDIT_PROFILE_KEY + id);
+        log.info("[sendEditProfilesRequest] 기존 심사 요청 기록 삭제 ===> userId: {}", userId);
+        EditProfileRequest before = (EditProfileRequest) redisUtils.get(EDIT_PROFILE_KEY + userId);
         s3Utils.deleteS3Image(before.newMainProfile());
         Set<String> profiles = before.newExtraProfiles()
                                      .keySet();
@@ -263,12 +261,12 @@ public class UserService {
         }
       }
     }
-    User user = getUserById(id);
+    User user = getUserById(userId);
     int EDIT_TOKEN_TIME = 10000;
-    redisUtils.saveWithTTL(EDIT_PROFILE_KEY + id, updateInfo, EDIT_TOKEN_TIME, TimeUnit.SECONDS);
-    makeJudgment(user, ReviewType.EDIT_PROFILE);
+    redisUtils.saveWithTTL(EDIT_PROFILE_KEY + userId, updateInfo, EDIT_TOKEN_TIME, TimeUnit.SECONDS);
+    makeReview(user, ReviewType.EDIT_PROFILE);
     sendNotificationToAdmin("회원 프로필 사진 변경 요청이 왔습니다.");
-    log.info("[sendEditProfilesRequest] 회원 프로필 사진 변경 요청 완료. ===> userId: {}", id);
+    log.info("[sendEditProfilesRequest] 회원 프로필 사진 변경 요청 완료. ===> userId: {}", userId);
   }
 
   @Transactional
@@ -323,11 +321,11 @@ public class UserService {
     int EDIT_TOKEN_TIME = 10000;
     redisUtils.saveWithTTL(EDIT_QUESTION_KEY + id, editTotalRequest, EDIT_TOKEN_TIME, TimeUnit.SECONDS);
     if (questionChange) {
-      makeJudgment(user, ReviewType.EDIT_QUESTION);
+      makeReview(user, ReviewType.EDIT_QUESTION);
       log.info("[updateUserAndDetails] 질문 수정 요청 성공 userId = {}", id);
     }
     if (introduceChange) {
-      makeJudgment(user, ReviewType.EDIT_INTRODUCE);
+      makeReview(user, ReviewType.EDIT_INTRODUCE);
       log.info("[updateUserAndDetails] 자기소개 수정 요청 성공 userId = {}", id);
     }
     sendNotificationToAdmin(String.format(USER_UPDATE_EDIT_REQUEST_MESSAGE, user.getUsername(), user.getEmail()));
@@ -390,13 +388,10 @@ public class UserService {
                                                       .stream()
                                                       .map(ProfileResponse::of)
                                                       .toList();
-    Integer totalThreadOptional = userAssetRepository.findTotalThreadByUserId(userId)
-                                                     .orElseThrow(() -> {
-                                                       log.error("[getJoinDetails] 해당 유저 실타레 정보가 존재하지 않습니다. ===> userId: {}", userId);
-                                                       return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                                                     });
+    Integer totalThread = userAssetRepository.findTotalThreadByUserId(userId)
+                                                     .orElse(0);
     log.info("[getJoinDetails] 회원 전체 정보 조회 성공 userId = {}", userId);
-    return JoinTotalDetails.of(userDetail, profiles, question, totalThreadOptional);
+    return JoinTotalDetails.of(userDetail, profiles, question, totalThread);
   }
 
   public List<ProfileResponse> getProfiles(Long userId) {
@@ -461,7 +456,7 @@ public class UserService {
                          });
   }
 
-  private void makeJudgment(User user, ReviewType type) {
+  private void makeReview(User user, ReviewType type) {
     reviewRepository.deleteByUserIdAndReviewType(user.getId(), type);
     Review review = Review.builder()
                           .user(user)
@@ -470,7 +465,7 @@ public class UserService {
                           .reason(null)
                           .build();
     reviewRepository.save(review);
-    log.debug("[makeJudgment] Judgment 저장 완료");
+    log.debug("[makeReview] Review 저장 완료");
   }
 
   private User createNewUserFromRequest(RejoinUserRequest request, User existingUser, boolean mainChange, MultipartFile mainProfile) {

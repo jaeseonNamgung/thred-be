@@ -52,7 +52,7 @@
         </root>
         <logger name="com.thred.datingapp" level="DEBUG"/>
     </springProfile>
-    <springProfile name="test">
+    <springProfile name="dev">
         <root level="INFO">
             <appender-ref ref="STDOUT"/>
         </root>

@@ -25,6 +25,7 @@ public class ChatApiController {
         @RequestParam("pageLastId") Long pageLastId,
         @RequestParam("pageSize") int pageSize
         ){
+        log.info("[API CALL] /api/chat/all/{chatRoomId} - 채팅 메시지 전체 조회 요청");
         log.debug("[getChatMessagesWithPaging] chatRoomId: {}", chatRoomId);
         log.debug("[getChatMessagesWithPaging] pageLastId: {}", pageLastId);
         log.debug("[getChatMessagesWithPaging] pageSize: {}", pageSize);

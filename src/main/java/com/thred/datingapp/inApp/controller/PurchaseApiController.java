@@ -28,7 +28,7 @@ public class PurchaseApiController {
             @RequestBody @Valid ReceiptRequest receiptRequest,
             @Login Long userId
             ) {
-
+        log.info("[API CALL] /api/purchase/verify/receipt - 영수증 검증 요청");
         log.debug("[verifyReceipt] userId = {}", userId);
         log.debug("[verifyReceipt] receiptRequest = {}", receiptRequest);
         return ApiDataResponse.ok(purchaseService.processInAppPurchase(userId, receiptRequest));
@@ -36,6 +36,7 @@ public class PurchaseApiController {
 
     @PostMapping("/use/thread")
     public ApiDataResponse<Boolean> useThread(@Login Long userId, @RequestBody ThreadRequest threadRequest) {
+        log.info("[API CALL] /api/purchase/use/thread - 실타래 사용 요청");
         log.debug("[useThread] userId = {}", userId);
         log.debug("[useThread] threadRequest = {}", threadRequest);
         return ApiDataResponse.ok(purchaseService.useThread(userId, threadRequest));
@@ -47,7 +48,7 @@ public class PurchaseApiController {
         @RequestParam("pageLastId")Long pageLastId,
         @RequestParam(required = false, name = "pageSize") int pageSize
     ) {
-
+        log.info("[API CALL] /api/use/thread/history/all - 실타래 이력 조회 요청");
         log.debug("[getThreadUseHistory] userId = {}", userId);
         log.debug("[getThreadUseHistory] pageLastId = {}", pageLastId);
         log.debug("[getThreadUseHistory] pageSize = {}", pageSize);
@@ -56,11 +57,13 @@ public class PurchaseApiController {
 
     @GetMapping("/product/all")
     public ApiDataResponse<List<ProductResponse>> getAllProduct(){
+        log.info("[API CALL] /api/product/all - 상품 조회 요청");
         return ApiDataResponse.ok(purchaseService.getAllProducts());
     }
 
     @GetMapping("/thread")
     public ApiDataResponse<Integer> getTotalThread(@Login Long userId) {
+        log.info("[API CALL] /api/thread - 실타래 수량 조회 요청");
         log.debug("[getTotalThread] userId = {}", userId);
         return ApiDataResponse.ok(purchaseService.getTotalThread(userId));
     }
@@ -71,6 +74,7 @@ public class PurchaseApiController {
             @PathVariable("purchaseTargetUserId") Long purchaseTargetUserId,
             @RequestParam("purchaseType") String purchaseType
     ) {
+        log.info("[API CALL] /api/history/{purchaseTargetUserId} - 구매 이력 조회 요청");
         log.debug("[existsThreadUseHistory] userId = {}", userId);
         log.debug("[existsThreadUseHistory] purchaseTargetUserId = {}", purchaseTargetUserId);
         log.debug("[existsThreadUseHistory] purchaseType = {}", purchaseType);

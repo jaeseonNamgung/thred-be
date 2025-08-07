@@ -19,6 +19,7 @@ public class GoogleInAppApiController {
 
     @PostMapping("/android/notification")
     public void receiptNotification(@RequestBody GoogleRtdnRequest googleRtdnRequest) {
+        log.info("[API CALL] /api/android/notification - 구글 Notification 요청");
         log.debug("[receiptNotification] googleRtdnRequest = {}", googleRtdnRequest);
         googleInAppService.processNotification(googleRtdnRequest);
     }
