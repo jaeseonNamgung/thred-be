@@ -2,7 +2,7 @@ package com.thred.datingapp.report.controller;
 
 import com.thred.datingapp.common.api.response.ApiDataResponse;
 import com.thred.datingapp.user.api.response.ProcessingResultResponse;
-import com.thred.datingapp.user.argumentResolver.Login;
+import com.thred.datingapp.common.annotation.Login;
 import com.thred.datingapp.report.dto.request.ReportRequest;
 import com.thred.datingapp.report.service.ReportService;
 import jakarta.validation.Valid;

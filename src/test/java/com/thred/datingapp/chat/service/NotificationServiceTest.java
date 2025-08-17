@@ -5,6 +5,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.thred.datingapp.chat.dto.NotificationDto;
 import com.thred.datingapp.chat.repository.FcmTokenRepository;
+import com.thred.datingapp.common.config.FirebaseConfig;
 import com.thred.datingapp.common.type.NotificationType;
 import com.thred.datingapp.common.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +15,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.test.context.ActiveProfiles;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -25,8 +30,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 
-
-@ExtendWith(MockitoExtension.class)
+@ActiveProfiles("local")
+@SpringBootTest
 class NotificationServiceTest {
 
     @Mock
@@ -35,25 +40,26 @@ class NotificationServiceTest {
     @InjectMocks
     private NotificationService sut;
 
-    @BeforeEach
-    public void init() throws Exception {
-        try {
-            ClassPathResource classPathResource = new ClassPathResource("serviceAccountKey.json");
 
-            FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setCredentials(GoogleCredentials.fromStream(classPathResource.getInputStream()))
-                    .build();
-            FirebaseApp.initializeApp(options);
-        } catch (IOException e) {
-            throw new Exception(e);
-        }
-    }
+//    @BeforeEach
+//    public void init() throws Exception {
+//        try {
+//            ClassPathResource classPathResource = new ClassPathResource("serviceAccountKey.json");
+//
+//            FirebaseOptions options = new FirebaseOptions.Builder()
+//                    .setCredentials(GoogleCredentials.fromStream(classPathResource.getInputStream()))
+//                    .build();
+//            FirebaseApp.initializeApp(options);
+//        } catch (IOException e) {
+//            throw new Exception(e);
+//        }
+//    }
 
     @Test
     @DisplayName("FCM Request Url 테스트")
     void sendMessageToTest() throws Exception {
         //given
-        String fcmToken = "cazMSPIQRBGjf9bWgyhB4q:APA91bEWqifIhDwhebUvC3k-0TT02o9--sv4Rx2IczIQPwXUEVcHJigZGvjQzhNElGk0bOtrbQDin7Vjp4uLbwx-JuUZLhC4AKXMH7GsPHdGFVCoVdw-x-k";
+        String fcmToken = "f-hJ1ejDSx-kOO5DV3x5oU:APA91bGLazNphRQN6SG-fdCmaX4kUbRNlkCt3w9-bVfyJK8ugrQOG_YcLhVgQYXzGStJ86158_1f8bYvuacxoQvMc6cCVJYiKSLxQl80bn0-s7Zkj3DpgRY";
         NotificationDto notificationResponse = createNotificationResponse();
         given(tokenRepository.findByMemberUserId(any())).willReturn(Optional.of(fcmToken));
 

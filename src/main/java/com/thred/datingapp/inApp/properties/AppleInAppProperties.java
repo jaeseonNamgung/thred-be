@@ -14,8 +14,8 @@ public class AppleInAppProperties {
     private final String bundleId;
     private final String issuerId;
     private final String keyId;
-    private final String privateKey;
     private final Long appleId;
+    private final String apiKey;
     private final String rootCA2; // 인증서 만료 기간: Apr 30, 2039
     private final String rootCA3; // 인증서 만료 기간: Apr 30, 2039
 

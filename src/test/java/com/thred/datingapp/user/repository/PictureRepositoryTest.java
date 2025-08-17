@@ -3,7 +3,6 @@ package com.thred.datingapp.user.repository;
 import com.thred.datingapp.common.config.JpaConfig;
 import com.thred.datingapp.common.config.P6SpyConfig;
 import com.thred.datingapp.common.entity.user.Picture;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -24,13 +23,13 @@ class PictureRepositoryTest {
   private PictureRepository pictureRepository;
 
   @Test
-  void findByProfileIdsTest() {
+  void findAllByProfileIdsTest() {
     // given
     List<Picture> pictures = createPictures(3);
     pictureRepository.saveAll(pictures);
     List<Long> pictureIds = pictures.stream().map(Picture::getId).toList();
     // when
-    List<Picture> expectedPictures = pictureRepository.findByProfileIds(pictureIds);
+    List<Picture> expectedPictures = pictureRepository.findAllByProfileIds(pictureIds);
     // then
     assertThat(expectedPictures.size()).isEqualTo(3);
   }
@@ -43,7 +42,7 @@ class PictureRepositoryTest {
     List<Long> pictureIds = pictures.stream().map(Picture::getId).toList();
     // when
     pictureRepository.deleteProfileByIds(pictureIds);
-    List<Picture> expectedPictures = pictureRepository.findByProfileIds(pictureIds);
+    List<Picture> expectedPictures = pictureRepository.findAllByProfileIds(pictureIds);
     // then
     assertThat(expectedPictures.size()).isEqualTo(0);
   }

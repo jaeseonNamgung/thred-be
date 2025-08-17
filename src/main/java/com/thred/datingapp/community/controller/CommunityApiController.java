@@ -7,7 +7,7 @@ import com.thred.datingapp.community.dto.request.CommunityRequest;
 import com.thred.datingapp.community.dto.response.CommunityAllResponse;
 import com.thred.datingapp.community.dto.response.CommunityResponse;
 import com.thred.datingapp.community.service.CommunityService;
-import com.thred.datingapp.user.argumentResolver.Login;
+import com.thred.datingapp.common.annotation.Login;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

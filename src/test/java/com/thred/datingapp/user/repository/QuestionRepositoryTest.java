@@ -42,18 +42,6 @@ class QuestionRepositoryTest {
     assertThat(question.isEmpty()).isTrue();
   }
 
-  @Test
-  void findByUserIdOrderByCreatedDateDescTest() {
-    // given
-    User user = UserFixture.createTestUser(1);
-    entityManager.persist(user);
-    Question question = UserFixture.createQuestion1(user);
-    questionRepository.save(question);
-    // when
-    Optional<Question> optionalQuestion = questionRepository.findByUserIdOrderByCreatedDateDesc(user.getId());
-    // then
-    assertThat(optionalQuestion).isNotEmpty();
-  }
 
 
 

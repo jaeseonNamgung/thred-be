@@ -11,7 +11,7 @@ import java.util.List;
 public interface PictureRepository extends JpaRepository<Picture, Long>{
 
   @Query("select p from Picture p where p.id in :ids")
-  List<Picture> findByProfileIds(@Param("ids")List<Long> ids);
+  List<Picture> findAllByProfileIds(@Param("ids")List<Long> ids);
 
   @Modifying(clearAutomatically = true)
   @Query("delete from Picture p where p.id in :deleteFileIds")

@@ -1,5 +1,6 @@
 package com.thred.datingapp.user.validation;
 
+import com.thred.datingapp.common.annotation.NotEmptyFile;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import org.springframework.web.multipart.MultipartFile;

@@ -11,7 +11,7 @@ import java.util.List;
 public interface BlockRepository extends JpaRepository<Block, Long> {
 
   @Query("select b from Block b join fetch b.blockedUser where b.blocker.id = :blockerId")
-  List<Block> findByBlockerId(@Param("blockerId") Long blockerId);
+  List<Block> findAllByBlockerId(@Param("blockerId") Long blockerId);
 
   @Modifying(clearAutomatically = true)
   @Query("delete from Block b where b.blocker.id = :blockerId")

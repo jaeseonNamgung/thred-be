@@ -1,11 +1,13 @@
 package com.thred.datingapp.community.controller;
 
 import com.thred.datingapp.common.api.response.ApiDataResponse;
+import com.thred.datingapp.common.entity.community.Community;
 import com.thred.datingapp.common.error.errorCode.CommunityErrorCode;
 import com.thred.datingapp.community.dto.request.CommentRequest;
 import com.thred.datingapp.community.dto.response.CommentResponse;
 import com.thred.datingapp.community.service.CommentService;
-import com.thred.datingapp.user.argumentResolver.Login;
+import com.thred.datingapp.common.annotation.Login;
+import com.thred.datingapp.community.service.CommunityService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +17,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RestController
 public class CommentApiController {
-  private final CommentService commentService;
+  private final CommentService   commentService;
+  private final CommunityService communityService;
 
   @PostMapping("/create/{communityId}")
   public ApiDataResponse<CommentResponse> createComment(
@@ -27,7 +30,8 @@ public class CommentApiController {
     log.debug("[createComment] communityId: {}", communityId);
     log.debug("[createComment] userId: {}", userId);
     log.debug("[createComment] commentRequest: {}", commentRequest);
-    return ApiDataResponse.ok(commentService.createComment(communityId, userId, commentRequest));
+    Community community = communityService.getByCommunityId(communityId);
+    return ApiDataResponse.ok(commentService.createComment(community, userId, commentRequest));
   }
 
   @PostMapping("/add/like/{communityId}/{commentId}")

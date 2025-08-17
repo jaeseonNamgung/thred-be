@@ -14,9 +14,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
   @Query("delete from Question q where q.user.id = :userId")
   void deleteByUserId(@Param("userId") Long userId);
 
-  @Query("select q from Question q where q.user.id = :userId order by q.createdDate DESC ")
-  Optional<Question> findByUserIdOrderByCreatedDateDesc(@Param("userId")Long userId);
-
   @Query("select q from Question q where q.user.id = :userId")
   Optional<Question> findByUserId(@Param("userId") Long userId);
 

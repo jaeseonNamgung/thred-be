@@ -1,8 +1,5 @@
 package com.thred.datingapp.user.service;
 
-import com.thred.datingapp.admin.service.ReviewService;
-import com.thred.datingapp.common.entity.admin.ReviewStatus;
-import com.thred.datingapp.common.entity.admin.ReviewType;
 import com.thred.datingapp.common.entity.user.RefreshToken;
 import com.thred.datingapp.common.entity.user.User;
 import com.thred.datingapp.common.entity.user.field.UserState;

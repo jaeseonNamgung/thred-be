@@ -26,16 +26,16 @@ public class RedisUtils {
   private final RedisTemplate<String, Object> redisTemplate;
   private final ObjectMapper                  objectMapper;
 
-  public void saveConnected(String key, Long value) {
+  public void saveConnected(final String key, final Long value) {
     redisTemplate.opsForSet().add(key, value);
   }
 
-  public Object get(String key) {
+  public Object get(final String key) {
     return redisTemplate.opsForValue().get(key);
   }
 
   //  접속 중인 유저 목록을 반환하는 메서드
-  public <T> Set<T> getConnected(String key, Class<T> classType) {
+  public <T> Set<T> getConnected(final String key, final Class<T> classType) {
     Set<Object> operations = redisTemplate.opsForSet().members(key);
     if (operations == null || operations.isEmpty()) {
       return Collections.emptySet();
@@ -52,7 +52,7 @@ public class RedisUtils {
     }).collect(Collectors.toSet());
   }
 
-  public void removeConnected(String key, Object value) {
+  public void removeConnected(final String key, final Object value) {
     // 접속된 유저 삭제
     redisTemplate.opsForSet().remove(key, value);
     // Set의 남은 요소 수 확인
@@ -63,7 +63,7 @@ public class RedisUtils {
     }
   }
 
-  public void saveWithTTL(String key, Object value, long ttlSeconds, TimeUnit timeUnit) {
+  public void saveWithTTL(final String key, final Object value, final long ttlSeconds, final TimeUnit timeUnit) {
     ValueOperations<String, Object> operations = redisTemplate.opsForValue();
     operations.set(key, value, ttlSeconds, timeUnit);
   }
@@ -77,7 +77,7 @@ public class RedisUtils {
     return operations.get(key);
   }
 
-  private void errorLog(String methodName, String errorMessage) {
+  private void errorLog(final String methodName, final String errorMessage) {
     String className = "RedisUtils";
     String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 

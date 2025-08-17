@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lombok.*;
+import org.checkerframework.common.aliasing.qual.Unique;
 
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
@@ -22,7 +23,7 @@ public class User extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Long socialId;
 
     @Column(nullable = false)

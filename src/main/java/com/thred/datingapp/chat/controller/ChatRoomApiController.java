@@ -6,7 +6,7 @@ import com.thred.datingapp.chat.service.ChatRoomService;
 import com.thred.datingapp.chat.service.SseEmitterService;
 import com.thred.datingapp.common.api.response.ApiDataResponse;
 import com.thred.datingapp.common.api.response.PageResponse;
-import com.thred.datingapp.user.argumentResolver.Login;
+import com.thred.datingapp.common.annotation.Login;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

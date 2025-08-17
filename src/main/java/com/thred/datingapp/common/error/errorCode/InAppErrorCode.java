@@ -12,6 +12,7 @@ public enum InAppErrorCode implements ErrorCode {
     PURCHASE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "결제 중 오류입니다."),
     APPLE_CA_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "애플 CA 인증 오류입니다."),
     SIGNATURE_VERIFICATION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서명 검증 실패입니다."),
+    FILE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "파일 로드 중 오류입니다."),
 
     NOT_EXIST_THREAD(HttpStatus.NOT_FOUND, "실이 부족합니다."),
     INSUFFICIENT_THREAD_COUNT(HttpStatus.BAD_REQUEST, "실타래 수량이 부족합니다."),

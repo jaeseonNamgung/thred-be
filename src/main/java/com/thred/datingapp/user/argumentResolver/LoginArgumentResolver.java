@@ -1,5 +1,6 @@
 package com.thred.datingapp.user.argumentResolver;
 
+import com.thred.datingapp.common.annotation.Login;
 import com.thred.datingapp.user.dto.PrincipalDetails;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.core.Authentication;

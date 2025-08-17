@@ -1,5 +1,6 @@
 package com.thred.datingapp.user.validation;
 
+import com.thred.datingapp.common.annotation.MinFileCount;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import java.util.List;

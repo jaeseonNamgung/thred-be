@@ -10,7 +10,7 @@ import com.thred.datingapp.main.service.AnswerService;
 import com.thred.datingapp.main.service.CardService;
 import com.thred.datingapp.user.api.response.CardProfileResponse;
 import com.thred.datingapp.user.api.response.ProcessingResultResponse;
-import com.thred.datingapp.user.argumentResolver.Login;
+import com.thred.datingapp.common.annotation.Login;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -17,6 +17,7 @@ import com.thred.datingapp.community.dto.response.CommunityResponse;
 import com.thred.datingapp.community.repository.*;
 import com.thred.datingapp.user.repository.PictureRepository;
 import com.thred.datingapp.user.repository.UserRepository;
+import com.thred.datingapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,20 +37,15 @@ public class CommunityService {
   private final CommunityRepository      communityRepository;
   private final CommunityImageRepository communityImageRepository;
   private final CommunityLikeRepository  communityLikeRepository;
-  private final UserRepository           userRepository;
-  private final CommentRepository        commentRepository;
-  private final CommentLikeRepository    commentLikeRepository;
+  private final UserService              userService;
+  private final CommentService           commentService;
   private final S3Utils                  s3Utils;
   private final PictureRepository        pictureRepository;
 
   @Transactional
   public CommunityResponse createCommunity(final Long userId, final CommunityRequest communityRequest, final List<MultipartFile> images) {
 
-    User user = userRepository.findById(userId).orElseThrow(() -> {
-      log.error("[createCommunity] 존재하지 않은 회원(Not exist user) ===> userId: {}", userId);
-      return new CustomException(UserErrorCode.USER_NOT_FOUND);
-    });
-
+    User user = userService.getUserById(userId);
     Community savedCommunity = communityRepository.save(communityRequest.toEntity(user));
     log.info("[createCommunity] 게시글 저장 완료(Successfully saved communityImage) ===> community: {}", savedCommunity);
     // 게시글에 이미지를 업로드 했을 때 로직 처리
@@ -80,7 +76,7 @@ public class CommunityService {
       return new CustomException(CommunityErrorCode.NOT_FOUND_BOARD);
     });
 
-    List<Comment> comments = commentRepository.findByCommunityId(communityId);
+    List<Comment> comments = commentService.getAllByCommunityId(communityId);
     List<String> userProfiles = pictureRepository.findS3PathAllByUserId(community.getUser().getId());
     int randomIndex = getUserProfileRandomIndex(communityId, userProfiles.size());
     return convertToCommentResponse(communityId, userId, community, comments, userProfiles.get(randomIndex));
@@ -96,8 +92,10 @@ public class CommunityService {
         communityRepository.findCommunitiesByCommunityTypeAndPageLastIdWithPaging(CommunityType.findType(communityTypeValue), pageLastId, pageSize);
     page.getContent().forEach(content -> {
       List<String> userProfiles = pictureRepository.findS3PathAllByUserId(content.getUserId());
-      int randomIndex = getUserProfileRandomIndex(content.getCommunityId(), userProfiles.size());
-      content.setProfile(userProfiles.get(randomIndex));
+      if(!userProfiles.isEmpty()) {
+        int randomIndex = getUserProfileRandomIndex(content.getCommunityId(), userProfiles.size());
+        content.setProfile(userProfiles.get(randomIndex));
+      }
     });
     return PageResponse.of(page.getSize(), page.isLast(), page.getContent());
   }
@@ -112,15 +110,14 @@ public class CommunityService {
     // 1. 게시글/댓글 좋아요 삭제
     communityLikeRepository.deleteLikeByCommunityId(communityId);
     log.info("[deleteCommunity] 게시글 좋아요 삭제 완료(Successfully deleted board like) ===> communityId: {}", communityId);
-    commentLikeRepository.deleteLikeByCommunityId(communityId);
+    commentService.deleteLikeByCommunityId(communityId);
     log.info("[deleteCommunity] 댓글 좋아요 삭제 완료(Successfully deleted comment like) ===> communityId: {}", communityId);
     // 2. 이미지 삭제
     List<CommunityImage> s3PathList = communityImageRepository.findByCommunityId(communityId);
     deleteCommunityImage(communityId, s3PathList);
     log.info("[deleteCommunity] 이미지 삭제 완료(Successfully deleted image) ===> communityId: {}", communityId);
     // 3. 댓글 삭제
-    commentRepository.deleteAllByCommunityId(communityId);
-    log.info("[deleteCommunity] 댓글 삭제 완료(Successfully deleted comment) ===> communityId: {}", communityId);
+    commentService.deleteAllByCommunityId(communityId);
     // 4. 게시글 삭제
     communityRepository.deleteByCommunityId(communityId);
     log.info("[deleteCommunity] 게시글 삭제 완료(Successfully deleted community board) ===> communityId: {}", communityId);
@@ -139,15 +136,10 @@ public class CommunityService {
 
   @Transactional
   public Boolean deleteAllCommunitiesForWithdrawnUser(final Long userId) {
-    boolean existUser = userRepository.existsById(userId);
-    if (!existUser) {
-      log.error("[deleteUserCommunityHistory] 존재하지 않은 회원 (Not exist user) ===> userId: {}", userId);
-      throw new CustomException(UserErrorCode.USER_NOT_FOUND);
-    }
+    userService.checkExistsUser(userId);
     communityRepository.detachUserFromCommunities(userId);
     log.info("[deleteUserCommunityHistory] 회원 관련 게시글 삭제 완료(Successfully deleted user community boards) ===> userId: {}", userId);
-    commentRepository.detachUserFromComments(userId);
-    log.info("[deleteUserCommunityHistory] 회원 관련 댓글 삭제 완료(Successfully deleted user comment) ===> userId: {}", userId);
+    commentService.detachUserFromComments(userId);
     return true;
   }
 
@@ -181,6 +173,13 @@ public class CommunityService {
 
   }
 
+  public Community getByCommunityId(final Long communityId) {
+    return communityRepository.findById(communityId).orElseThrow(() -> {
+      log.error("[getByCommunityId] 존재하지 않은 게시글입니다. ===> communityId: {}", communityId);
+      return new CustomException(CommunityErrorCode.NOT_FOUND_BOARD);
+    });
+  }
+
   private boolean validateCommunityLike(final Long communityId, final Long userId) {
     return communityId != null && userId != null;
   }
@@ -210,7 +209,7 @@ public class CommunityService {
     return true;
   }
 
-  private int getUserProfileRandomIndex(Long communityId, int imageLength) {
+  private int getUserProfileRandomIndex(final Long communityId, final int imageLength) {
     LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
     String key = today + "-" + communityId;
     return Math.abs(key.hashCode()) % imageLength;
@@ -233,15 +232,15 @@ public class CommunityService {
     // 부모 댓글일 경우
     if (comment.getParentId() == null) {
       // 자식 댓글을 부모 댓글에서 찾아서 재귀적으로 처리
-      List<Comment> childrenComment = commentRepository.findByParentId(comment.getId());
-      return CommentResponse.from(comment, commentLikeRepository.countByCommentLikePkCommentId(comment.getId()),
-                                  commentLikeRepository.existsLikesByCommentIdAndUserId(comment.getId(), userId), userId,
+      List<Comment> childrenComment = commentService.getAllByParentId(comment.getId());
+      return CommentResponse.from(comment, commentService.countByCommentLikePkCommentId(comment.getId()),
+                                  commentService.existsLikesByCommentIdAndUserId(comment.getId(), userId), userId,
                                   childrenComment.stream().map(childComment -> convertToCommentResponse(userId, childComment)) // 재귀 호출
                                                  .toList());
     }
     // 자식 댓글인 경우 (부모 댓글이 없으므로 자식만 리턴)
-    return CommentResponse.from(comment, commentLikeRepository.countByCommentLikePkCommentId(comment.getId()),
-                                commentLikeRepository.existsLikesByCommentIdAndUserId(comment.getId(), userId), userId, List.of()
+    return CommentResponse.from(comment, commentService.countByCommentLikePkCommentId(comment.getId()),
+                                commentService.existsLikesByCommentIdAndUserId(comment.getId(), userId), userId, List.of()
                                 // 자식 댓글이므로 더 이상 하위 댓글 없음
     );
   }
@@ -265,4 +264,5 @@ public class CommunityService {
       log.debug("[saveCommunityImage] 게시글 이미지 삭제 완료 ===> communityId: {}, images: {}", communityId, communityImages);
     }
   }
+
 }

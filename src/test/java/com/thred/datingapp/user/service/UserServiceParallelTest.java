@@ -1,6 +1,7 @@
 package com.thred.datingapp.user.service;
 
 import com.testFixture.UserFixture;
+import com.thred.datingapp.common.utils.RedisUtils;
 import com.thred.datingapp.user.api.request.JoinDetailsRequest;
 import com.thred.datingapp.user.api.request.JoinUserRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -12,10 +13,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @ActiveProfiles("local")
@@ -26,6 +33,8 @@ class UserServiceParallelTest {
   private CountDownLatch latch;
   @Autowired
   private UserService userService;
+  @Autowired
+  private RedisUtils  redisUtils;
 
   @BeforeEach
   void init() {
@@ -53,5 +62,22 @@ class UserServiceParallelTest {
 
     }
     latch.await();
+  }
+
+  @Test
+  void Address_제거후_캐시_삭제_테스트() {
+    String key = "card:daily:viewer:" + 1 + ":" + LocalDate.now();
+    redisUtils.saveWithTTL(key, "Test", getSecondsUntilMidnight() , TimeUnit.SECONDS);
+    Object o = redisUtils.get(key);
+    assertThat(o).isNotNull();
+    userService.changeAddress(1L, "28", "28140");
+    o = redisUtils.get(key);
+    assertThat(o).isNull();
+  }
+
+  private long getSecondsUntilMidnight(){
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime midnight = now.toLocalDate().plusDays(1).atStartOfDay();
+    return Duration.between(now, midnight).getSeconds();
   }
 }

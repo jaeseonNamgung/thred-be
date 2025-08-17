@@ -5,11 +5,11 @@ import com.thred.datingapp.common.entity.community.Community;
 import com.thred.datingapp.common.entity.user.User;
 import com.thred.datingapp.common.error.CustomException;
 import com.thred.datingapp.common.error.errorCode.CommunityErrorCode;
+import com.thred.datingapp.common.error.errorCode.UserErrorCode;
 import com.thred.datingapp.community.dto.request.CommentRequest;
 import com.thred.datingapp.community.dto.response.CommentResponse;
 import com.thred.datingapp.community.repository.CommentLikeRepository;
 import com.thred.datingapp.community.repository.CommentRepository;
-import com.thred.datingapp.community.repository.CommunityRepository;
 import com.thred.datingapp.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,14 +27,13 @@ public class CommentService {
   private static final String DELETE_MESSAGE       = "삭제된 댓글입니다.";
   private static final String ADMIN_DELETE_MESSAGE = "관리자에 의해 삭제된 댓글입니다.";
 
-  private final CommunityRepository   communityRepository;
   private final CommentRepository     commentRepository;
   private final UserService           userService;
   private final CommentLikeRepository commentLikeRepository;
 
   @Transactional
-  public CommentResponse createComment(final Long communityId, final Long userId, final CommentRequest commentRequest) {
-    Community community = getCommunityById(communityId);
+  public CommentResponse createComment(final Community community, final Long userId, final CommentRequest commentRequest) {
+
     User user = userService.getUserById(userId);
 
     // parent id == 0: 자식 댓글, parent id == null: 부모 댓글
@@ -98,6 +97,51 @@ public class CommentService {
     deleteCommentInternal(commentId, userId, ADMIN_DELETE_MESSAGE, true);
   }
 
+  public List<Comment> getAllByCommunityId(final Long communityId) {
+    return commentRepository.findByCommunityId(communityId);
+  }
+
+  @Transactional
+  public void deleteAllByCommunityId(final Long communityId) {
+    if(communityId == null) {
+      log.error("[deleteAllByCommunityId] communityId is Null");
+      throw new CustomException(CommunityErrorCode.NOT_FOUND_BOARD);
+    }
+    commentRepository.deleteAllByCommunityId(communityId);
+    log.info("[deleteAllByCommunityId] 댓글 전체 삭제 완료 ===> communityId: {}", communityId);
+  }
+
+  @Transactional
+  public void detachUserFromComments(final Long userId) {
+    if(userId == null) {
+      log.error("[detachUserFromComments] userId is Null");
+      throw new CustomException(UserErrorCode.USER_NOT_FOUND);
+    }
+    commentRepository.detachUserFromComments(userId);
+    log.info("[detachUserFromComments] 회원 관련 댓글 삭제 완료(Successfully deleted user comment) ===> userId: {}", userId);
+  }
+
+  public List<Comment> getAllByParentId(final Long parentId) {
+    return commentRepository.findAllByParentId(parentId);
+  }
+
+  @Transactional
+  public void deleteLikeByCommunityId(final Long communityId) {
+    if(communityId == null) {
+      log.error("[deleteLikeByCommunityId] communityId is Null");
+      throw new CustomException(CommunityErrorCode.NOT_FOUND_BOARD);
+    }
+    commentLikeRepository.deleteLikeByCommunityId(communityId);
+  }
+
+  public int countByCommentLikePkCommentId(final Long commentId) {
+    return commentLikeRepository.countByCommentLikePkCommentId(commentId);
+  }
+
+  public boolean existsLikesByCommentIdAndUserId(final Long commentId, final Long userId) {
+    return commentLikeRepository.existsLikesByCommentIdAndUserId(commentId, userId);
+  }
+
   private Boolean deleteCommentInternal(final Long commentId, final Long userId, final String deleteMessage, boolean isAdmin) {
     Comment comment = commentRepository.findByCommentIdAndUserId(commentId, userId).orElseThrow(() -> {
       log.error("[deleteComment{}] 존재하지 않은 댓글 (Not found comment) ===> commentId: {}, userId: {}", isAdmin ? "ByAdmin" : "", commentId, userId);
@@ -111,10 +155,5 @@ public class CommentService {
 
     return true;
   }
-  private Community getCommunityById(Long communityId) {
-    return communityRepository.findById(communityId).orElseThrow(() -> {
-      log.error("[createComment] 존재하지 않은 게시글입니다. ===> communityId: {}", communityId);
-      return new CustomException(CommunityErrorCode.NOT_FOUND_BOARD);
-    });
-  }
+
 }

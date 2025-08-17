@@ -21,11 +21,13 @@ import com.thred.datingapp.user.api.request.JoinUserRequest;
 import com.thred.datingapp.user.api.request.OAuthLoginRequest;
 import com.thred.datingapp.user.dto.KakaoDto;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -179,22 +181,24 @@ public class UserFixture {
 
   public static User createTestUser(int count) {
     int year = 2000 + count;
-    return User.builder()
-               .socialId(1L)
-               .username("testuser" + count)
-               .birth(LocalDate.of(year, 1, 1))
-               .role(Role.USER)
-               .gender(Gender.MALE)
-               .email("testuser" + count + "@example.com")
-               .introduce("나는 테스트 유저 " + count)
-               .code("CODE" + count)
-               .inputCode("INPUT" + count)
-               .partnerGender(PartnerGender.OTHER)
-               .phoneNumber("010-0000-0000")
-               .certification(true)
-               .address(Address.of("seoul", ""))
-               .mainProfile("profile" + count + ".jpg")
-               .build();
+    User user = User.builder()
+                     .socialId(Long.valueOf(count))
+                     .username("testuser" + count)
+                     .birth(LocalDate.of(year, 1, 1))
+                     .role(Role.USER)
+                     .gender(Gender.MALE)
+                     .email("testuser" + count + "@example.com")
+                     .introduce("나는 테스트 유저 " + count)
+                     .code("CODE" + count)
+                     .inputCode("INPUT" + count)
+                     .partnerGender(PartnerGender.OTHER)
+                     .phoneNumber("010-0000-0000")
+                     .certification(true)
+                     .address(Address.of("seoul", ""))
+                     .mainProfile("profile" + count + ".jpg")
+                     .build();
+    ReflectionTestUtils.setField(user, "id", (long)count);
+    return user;
   }
 
   public static JoinUserRequest createJoinUserRequest(int index) {
@@ -215,6 +219,19 @@ public class UserFixture {
         index % 2 == 0 ? "이성" : "동성",
         "fcm_token_" + index
     );
+  }
+
+  public static List<Picture> createPictures(int count, User user) {
+    List<Picture> pictures = new ArrayList<>();
+    for (int i = 1; i <= count; i++) {
+      Picture picture = Picture.builder()
+                               .originalFileName(String.format("original %s.jpg", i))
+                               .s3Path(String.format("original %s.jpg", i))
+                               .user(user)
+                               .build();
+      pictures.add(picture);
+    }
+    return pictures;
   }
 
   public static JoinDetailsRequest createJoinDetailsRequest(int index) {

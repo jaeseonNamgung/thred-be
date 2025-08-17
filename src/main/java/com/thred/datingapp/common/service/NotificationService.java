@@ -8,6 +8,7 @@ import com.thred.datingapp.chat.dto.NotificationDto;
 import com.thred.datingapp.chat.repository.FcmTokenRepository;
 import com.thred.datingapp.common.error.CustomException;
 import com.thred.datingapp.common.error.errorCode.BaseErrorCode;
+import com.thred.datingapp.common.error.errorCode.FcmTokenErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class NotificationService {
                               } catch (FirebaseMessagingException e) {
                                   log.error("[sendMessageTo] 알림 메세지 생성 중 오류(Error during notification message creation)");
                                   log.error(e.toString());
-                                  throw new CustomException(BaseErrorCode.INTERNAL_SERVER_ERROR);
+                                  throw new CustomException(FcmTokenErrorCode.NOTIFICATION_ERROR);
                               }
                           });
     }

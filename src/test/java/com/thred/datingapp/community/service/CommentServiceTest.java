@@ -35,47 +35,27 @@ class CommentServiceTest {
     @Mock
     private CommentRepository   commentRepository;
     @Mock
-    private CommunityRepository communityRepository;
-    @Mock
     private UserService userService;
     @InjectMocks
     private CommentService      sut;
-    
-    @Test
-    @DisplayName("존재하지 않은 게시글일 때 NotFoundBoard 에러 발생")
-    void createComment_whenCommunityIdIsInvalid_thenThrowsNotFoundBoardError () {
-      // given
-        Long communityId = 1L;
-        Long userId = 1L;
-        CommentRequest commentRequest = CommentRequest.of(0L, "content", true);
 
-        given(communityRepository.findById(anyLong())).willReturn(Optional.empty());
-      // when
-        CustomException exception = assertThrows(CustomException.class, () -> sut.createComment(communityId, userId, commentRequest));
-        // then
-        assertThat(exception.getErrorCode()).isEqualTo(CommunityErrorCode.NOT_FOUND_BOARD);
-        then(communityRepository).should().findById(anyLong());
-    }
 
     @Test
     @DisplayName("parentCommentId가 0인 경우 부모 없는 댓글(최상위 댓글)로 저장된다")
     void createComment_whenParentIdIsZero_thenSavesAsTopLevelComment() {
         // given
-        Long communityId = 1L;
         Long userId = 1L;
-        CommentRequest commentRequest = CommentRequest.of(0L, "content", true);
         User user = UserFixture.createTestUser(1);
-        ReflectionTestUtils.setField(user, "id", 1L);
         Community community = CommunityFixture.createCommunity(1, user);
+        CommentRequest commentRequest = CommentRequest.of(0L, "content", true);
+        ReflectionTestUtils.setField(user, "id", 1L);
         Comment parentComment = CommunityFixture.createParentComment(1, community, user);
         ReflectionTestUtils.setField(parentComment, "id", 1L);
-        given(communityRepository.findById(anyLong())).willReturn(Optional.ofNullable(community));
         given(userService.getUserById(anyLong())).willReturn(user);
         given(commentRepository.save(any())).willReturn(parentComment);
         // when
-        sut.createComment(communityId, userId, commentRequest);
+        sut.createComment(community, userId, commentRequest);
         // then
-        then(communityRepository).should().findById(anyLong());
         then(userService).should().getUserById(anyLong());
         then(commentRepository).should(never()).findById(anyLong());
         then(commentRepository).should().save(any());
@@ -85,7 +65,6 @@ class CommentServiceTest {
     @DisplayName("parentCommentId가 0이 아닌 경우 자식 댓글로 저장된다.")
     void createComment_whenParentIdIsNotZero_thenSavesChildComment() {
         // given
-        Long communityId = 1L;
         Long userId = 1L;
         CommentRequest commentRequest = CommentRequest.of(5L, "content", true);
         User user = UserFixture.createTestUser(1);
@@ -96,15 +75,12 @@ class CommentServiceTest {
         Comment childComment = CommunityFixture.createChildComment(1, community, 1L, user);
         ReflectionTestUtils.setField(childComment, "id", 1L);
 
-
-        given(communityRepository.findById(anyLong())).willReturn(Optional.ofNullable(community));
         given(userService.getUserById(anyLong())).willReturn(user);
         given(commentRepository.findById(anyLong())).willReturn(Optional.of(parentComment));
         given(commentRepository.save(any())).willReturn(childComment);
         // when
-        sut.createComment(communityId, userId, commentRequest);
+        sut.createComment(community, userId, commentRequest);
         // then
-        then(communityRepository).should().findById(anyLong());
         then(userService).should().getUserById(anyLong());
         then(commentRepository).should().findById(anyLong());
         then(commentRepository).should().save(any());

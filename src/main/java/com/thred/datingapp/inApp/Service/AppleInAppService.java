@@ -42,7 +42,7 @@ public class AppleInAppService {
         try {
             // 1. 애플 영수증에서 TransactionId 추출
             String transactionId = extractTransactionIdFromReceipt(receipt);
-            // 2. 단일 거래 정보 추출
+            // 2. 단일 결제 건에 대한 정보 조회
             TransactionInfoResponse transactionInfo = appStoreServerAPIClient.getTransactionInfo(transactionId);
             JWSTransactionDecodedPayload decodedPayload =
                     signedDataVerifier.verifyAndDecodeTransaction(transactionInfo.getSignedTransactionInfo());

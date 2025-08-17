@@ -42,7 +42,7 @@ public record CommunityResponse(
                 community.getId(),
                 community.getTitle(),
                 community.getContent(),
-                CommunityImageResponse.fromResponse(community.getCommunityImages()),
+                community.getCommunityImages().isEmpty() ? List.of() : CommunityImageResponse.fromResponse(community.getCommunityImages()),
                 community.getUser().getId().equals(userId),
                 community.getIsPublicProfile(),
                 community.getUser().getId(),

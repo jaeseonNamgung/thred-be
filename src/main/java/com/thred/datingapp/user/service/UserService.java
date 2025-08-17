@@ -4,9 +4,9 @@ import static com.thred.datingapp.user.properties.RedisProperties.EDIT_PROFILE_K
 import static com.thred.datingapp.user.properties.RedisProperties.EDIT_QUESTION_KEY;
 
 import com.thred.datingapp.admin.repository.ReviewRepository;
-import com.thred.datingapp.admin.service.ReviewService;
 import com.thred.datingapp.chat.dto.NotificationDto;
 import com.thred.datingapp.chat.repository.FcmTokenRepository;
+import com.thred.datingapp.common.annotation.DistributedLock;
 import com.thred.datingapp.common.service.NotificationService;
 import com.thred.datingapp.common.type.NotificationType;
 import com.thred.datingapp.common.entity.admin.Review;
@@ -39,11 +39,7 @@ import com.thred.datingapp.main.dto.response.UserDetailsResponse;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import lombok.RequiredArgsConstructor;
@@ -63,32 +59,34 @@ public class UserService {
   private final NotificationService          notificationService;
   private final ReviewRepository             reviewRepository;
   private final RandomStringGeneratorService random;
-  private final UserDetailRepository         userDetailRepository;
-  private final QuestionRepository           questionRepository;
-  private final BlockRepository              blockRepository;
+  private final UserDetailService            userDetailService;
+  private final QuestionService              questionService;
+  private final BlockService                 blockService;
   private final S3Utils                      s3Utils;
   private final RedisUtils                   redisUtils;
-  private final PictureRepository            pictureRepository;
-  private final FcmTokenRepository           fcmTokenRepository;
-  private final UserAssetRepository          userAssetRepository;
+  private final PictureService               pictureService;
+  private final FcmTokenService              fcmTokenService;
+  private final UserAssetService             userAssetService;
   private final PurchaseService              purchaseService;
   private final UserRepository               userRepository;
 
-  public boolean checkDuplicateEmail(String email) {
+
+  public boolean checkDuplicateEmail(final String email) {
     return userRepository.findByEmail(email)
                          .isPresent();
   }
 
-  public boolean checkDuplicateName(String username) {
+  public boolean checkDuplicateName(final String username) {
     return userRepository.existsByUsername(username);
   }
 
-  public boolean checkCode(String code) {
+  public boolean checkCode(final String code) {
     return userRepository.existsByCode(code);
   }
 
   @Transactional
-  public Long join(JoinUserRequest joinUserRequest, JoinDetailsRequest details, MultipartFile mainProfile, List<MultipartFile> files) {
+  @DistributedLock(key = "#joinUserRequest.socialId", waitTime = 5, leaseTime = 10)
+  public Long join(final JoinUserRequest joinUserRequest, final JoinDetailsRequest details, final MultipartFile mainProfile, final List<MultipartFile> files) {
     boolean isExistUser = userRepository.existsByEmail(joinUserRequest.email());
 
     if (isExistUser) {
@@ -104,7 +102,7 @@ public class UserService {
     Long userId = completeFirstJoin(newUser, newUserDetail);
     // 3. Question 저장
     Question question = JoinUserRequest.fromEntity(joinUserRequest, newUser);
-    questionRepository.save(question);
+    questionService.save(question);
     // 4. 회원 프로필 이미지 저장
     saveMultipartFileAndPictures(files, newUser);
     // 5. Judgment 저장
@@ -114,7 +112,7 @@ public class UserService {
                                 .token(joinUserRequest.fcmToken())
                                 .member(newUser)
                                 .build();
-    fcmTokenRepository.save(fcmToken);
+    fcmTokenService.save(fcmToken);
     // 7. FCM 알림 전송
     sendNotificationToAdmin(String.format(USER_REGISTRATION_REQUEST_MESSAGE, newUser.getUsername(), newUser.getEmail()));
     log.info("[join] 회원가입 요청 완료 ===> email: {}", joinUserRequest.email());
@@ -122,8 +120,8 @@ public class UserService {
   }
 
   @Transactional
-  public void rejoin(RejoinUserRequest rejoinUserRequest, JoinDetailsRequest details, boolean mainChange, MultipartFile mainProfile,
-                     List<Long> deleteFileIds, List<MultipartFile> newProfiles) {
+  public void rejoin(final RejoinUserRequest rejoinUserRequest, final JoinDetailsRequest details, final boolean mainChange, final MultipartFile mainProfile,
+                     final List<Long> deleteFileIds, final List<MultipartFile> newProfiles) {
 
     // 1. 기존 회원 조회
     User existingUser = getExistingUser(rejoinUserRequest);
@@ -131,14 +129,13 @@ public class UserService {
     User newUser = createNewUserFromRequest(rejoinUserRequest, existingUser, mainChange, mainProfile);
     // 3. 회원 detail 업데이트
     UserDetail newUserDetail = JoinDetailsRequest.fromEntity(details, newUser);
-    updateExistingUserDetail(existingUser, newUserDetail);
+    updateExistingUserDetail(existingUser.getId(), newUserDetail);
     // 4. 기존 프로필 삭제 및 새 프로필 업데이트
     deleteOldPictures(deleteFileIds);
     saveNewProfilesIfNeeded(newProfiles, existingUser);
     // 5. 기존 질문 삭제 및 새 질문 저장
-    questionRepository.deleteById(existingUser.getId());
-    Question question = RejoinUserRequest.fromEntity(rejoinUserRequest, existingUser);
-    questionRepository.save(question);
+    questionService.deleteByUserId(existingUser.getId());
+    questionService.save(RejoinUserRequest.fromEntity(rejoinUserRequest, existingUser));
     // 6. Judgment 생성
     makeReview(existingUser, ReviewType.JOIN);
     log.info("[rejoin] 재가입 요청 완료 ===> email: {}", rejoinUserRequest.email());
@@ -148,7 +145,7 @@ public class UserService {
 
   // 추천인 코드
   @Transactional
-  public void joinCodeEvent(Long referredUserId, String code) {
+  public void joinCodeEvent(final Long referredUserId, final String code) {
     User referrerUser = userRepository.findByCode(code)
                                       .orElseThrow(() -> {
                                         log.error("[joinCodeEvent] 존재하지 않은 코드입니다.(Not exist user) ===> referralCode: {}", code);
@@ -159,7 +156,7 @@ public class UserService {
   }
 
   @Transactional
-  public void changeJoinStatus(Long userId, boolean result) {
+  public void changeJoinStatus(final Long userId, final boolean result) {
     User user = getUserById(userId);
     if (result) {
       user.successJoin();
@@ -170,55 +167,51 @@ public class UserService {
   }
 
   @Transactional
-  public void setBlockNumber(Long userId, List<BlockInfoRequest> blockInfoRequests) {
+  public void setBlockNumber(final Long userId, final List<BlockInfoRequest> blockInfoRequests) {
     // 1. 차단 요청을 보낸 회원 조회 (차단자)
     User blocker = getUserById(userId);
     // 2. 차단 대상 회원 목록 조회 (이름 + 전화번호로 매칭)
     List<User> blockedUsers = getBlockedUsers(blockInfoRequests);
     // 3. 해당 사용자가 이전에 차단했던 모든 기록 삭제 (차단 목록 초기화)
-    blockRepository.deleteByBlockerId(userId);
+    blockService.deleteByBlockerId(userId);
     // 4. 차단 요청 목록이 비어 있을 경우, 차단 처리 없이 종료
     if (blockInfoRequests.isEmpty()) {
       log.info("[setBlockNumber] 차단된 연락처 없음 ===> userId: {}", userId);
       return;
     }
     // 5. 새로운 차단 대상이 있을 경우, 차단 정보 저장
-    for (User blockedUser : blockedUsers) {
-      Block newBlock = Block.builder()
-                            .blockedUser(blockedUser)
-                            .blocker(blocker)
-                            .build();
-      blockRepository.save(newBlock);
-    }
+    blockService.bulkInsert(blocker, blockedUsers);
     log.info("[setBlockNumber] 연락처 차단 정보 수정 완료 ===> userId: {}", userId);
   }
 
-  public BlockNumbersResponse getBlockNumber(Long userId) {
-    List<Block> blocks = blockRepository.findByBlockerId(userId);
+  public BlockNumbersResponse getBlockNumber(final Long userId) {
+    List<Block> blocks = blockService.getAllByUserId(userId);
     List<BlockNumberResponse> blockResponses = blocks.stream()
                                                      .map(block -> new BlockNumberResponse(block.getBlockedUser().getUsername(),
                                                                                            block.getBlockedUser().getPhoneNumber()))
                                                      .toList();
-    log.info("[getBlockNumber] 연락처 차단 조회 성공 ===> userId: {}", userId);
+    log.info("[getBlockNumber] 연락처 차단 조회 성공 ===> blockerId: {}", userId);
     return new BlockNumbersResponse(blockResponses);
   }
 
   @Transactional
-  public void changePhoneNumber(Long id, String number) {
+  public void changePhoneNumber(final Long id, final String number) {
     User user = getUserById(id);
     user.changePhoneNumber(number);
     log.info("[changePhoneNumber] 핸드폰 번호 수정 완료 ===> userId: {}", id);
   }
 
   @Transactional
-  public void changeAddress(Long id, String city, String province) {
+  public void changeAddress(final Long id, final String city, final String province) {
     User user = getUserById(id);
     user.changeAddress(city, province);
+    String key = "card:daily:viewer:" + user.getId() + ":" + LocalDate.now();
+    redisUtils.deleteValue(key);
     log.info("[changeAddress] 주소 정보 수정 완료 ===> userId: {}", id);
   }
 
   @Transactional
-  public void sendEditProfilesRequest(Long userId, boolean mainChange, MultipartFile mainProfile, List<Long> changedProfileIds,
+  public void sendEditProfilesRequest(final Long userId, final boolean mainChange, final MultipartFile mainProfile, final List<Long> changedProfileIds,
                                       List<MultipartFile> changedExtraProfiles) {
     Map<String, String> profilesInfo = new HashMap<>();
     if (changedExtraProfiles != null) {
@@ -235,9 +228,9 @@ public class UserService {
 
     List<Picture> existImages;
     if (changedProfileIds != null && !changedProfileIds.isEmpty()) {
-      existImages = pictureRepository.findAllByUserIdAndIdNotIn(userId, changedProfileIds);
+      existImages = pictureService.getAllByUserIdAndIdNotIn(userId, changedProfileIds);
     } else {
-      existImages = pictureRepository.findAllByUserId(userId);
+      existImages = pictureService.getAllByUserId(userId);
     }
 
     List<String> existImagePaths = existImages.stream()
@@ -270,50 +263,46 @@ public class UserService {
   }
 
   @Transactional
-  public void updateUserForProfileEdit(EditProfileRequest request, Long userId) {
+  public void updateUserForProfileEdit(final EditProfileRequest request, final Long userId) {
     User user = getUserById(userId);
     if (request.mainChange()) {
       log.info("[updateUserForProfileEdit] 메인 프로필 수정 완료 ===> userId: {}", userId);
       s3Utils.deleteS3Image(user.getMainProfile());
       user.updateMainProfile(request.newMainProfile());
     }
-    List<Picture> changedPictures = pictureRepository.findByProfileIds(request.changedFileIds());
+    List<Picture> changedPictures = pictureService.getAllByProfileIds(request.changedFileIds());
     changedPictures.forEach(picture -> s3Utils.deleteS3Image(picture.getS3Path()));
-    pictureRepository.deleteProfileByIds(request.changedFileIds());
+    pictureService.deleteProfileByIds(request.changedFileIds());
     saveEditImages(request.newExtraProfiles(), user);
     log.info("[updateUserForProfileEdit] 프로필 수정 완료 ===> userId: {}", userId);
     // FIXME 사용자에게 알림을 보내야함
   }
 
   @Transactional
-  public void saveEditImages(Map<String, String> files, User user) {
+  public void saveEditImages(final Map<String, String> files, final User user) {
     for (String originalFileName : files.keySet()) {
       Picture picture = Picture.builder()
                                .user(user)
                                .originalFileName(originalFileName)
                                .s3Path(files.get(originalFileName))
                                .build();
-      pictureRepository.save(picture);
+      pictureService.save(picture);
     }
   }
 
   @Transactional
-  public void updateDetails(EditDetailsRequest request, Long userId) {
-    UserDetail details = userDetailRepository.findByUserId(userId)
-                                             .orElseThrow(() -> {
-                                               log.error("[updateDetails] 해당 유저가 존재하지 않습니다. ===> userId: {}", userId);
-                                               return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                                             });
+  public void updateDetails(final EditDetailsRequest request, final Long userId) {
+    UserDetail details = userDetailService.getByUserId(userId);
     details.updateDetailsForEdit(request);
     log.info("[updateDetails] 세부 사항 수정 완료 ===> userId: {}", userId);
   }
 
   @Transactional
-  public void updateUserAndDetails(Long id, boolean questionChange, boolean introduceChange, EditUserRequest editUserRequest,
+  public void updateUserAndDetails(final Long id, final boolean questionChange, final boolean introduceChange, final EditUserRequest editUserRequest,
                                    EditDetailsRequest details) {
     User user = getUserById(id);
     updateDetails(details, id);
-    List<Picture> pictures = pictureRepository.findByUserId(id);
+    List<Picture> pictures = pictureService.getAllByUserId(id);
     List<String> picturesUrl = pictures.stream()
                                        .map(Picture::getS3Path)
                                        .toList();
@@ -332,7 +321,7 @@ public class UserService {
   }
 
   @Transactional
-  public void updateIntroduceOrQuestion(Long id, EditUserRequest userInfo, boolean isIntroduceChange) {
+  public void updateIntroduceOrQuestion(final Long id, final EditUserRequest userInfo, final boolean isIntroduceChange) {
     User user = userRepository.findById(id)
                               .orElseThrow(() -> {
                                 log.error("[updateIntroduceAndQuestion] 존재하지 않은 사용자입니다. ===> userId: {}", id);
@@ -343,65 +332,43 @@ public class UserService {
       log.info("[updateIntroduceOrQuestion] 자기소개 수정 완료 ===> userId: {}", id);
     }else {
       Question question = EditUserRequest.toQuestionEntity(userInfo, user);
-      questionRepository.save(question);
+      questionService.save(question);
       log.info("[updateIntroduceOrQuestion] 질문 수정 완료 ===> userId: {}", id);
     }
   }
 
   @Transactional
-  public void save(User user) {
+  public void save(final User user) {
     userRepository.save(user);
   }
 
-  public UserDetail getDetailsByUserIdFetchUser(Long userId) {
-    return userDetailRepository.findByUserIdFetchUserInfo(userId)
-                               .orElseThrow(() -> {
-                                 log.error("[getDetailsByUserIdWithUser] 유저 상세 정보가 존재하지 않습니다. ===> userId: {}", userId);
-                                 return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                               });
-  }
-
-  public UserDetailsResponse getAllDetails(Long userId) {
-    Question question = questionRepository.findByUserIdOrderByCreatedDateDesc(userId)
-                                          .orElseThrow(() -> {
-                                            log.error("[getAllDetails] 존재하지 않은 질문입니다. ===> userId: {}", userId);
-                                            return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                                          });
-    UserDetail userDetail = getDetailsByUserIdFetchUser(userId);
+  public UserDetailsResponse getAllDetails(final Long userId) {
+    Question question = questionService.getByUserId(userId);
+    UserDetail userDetail = userDetailService.getByUserIdFetchUserInfo(userId);
     return UserDetailsResponse.of(userDetail, question);
   }
 
-  public JoinTotalDetails getJoinDetails(Long userId) {
-    UserDetail userDetail = userDetailRepository.findByUserIdFetchUserInfo(userId)
-                                                .orElseThrow(() -> {
-                                                  log.error("[getJoinDetails] 해당 유저가 존재하지 않습니다. ===> userId: {}", userId);
-                                                  return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                                                });
+  public JoinTotalDetails getJoinDetails(final Long userId) {
+    UserDetail userDetail = userDetailService.getByUserIdFetchUserInfo(userId);
+    Question question = questionService.getByUserId(userId);
 
-    Question question = questionRepository.findByUserIdOrderByCreatedDateDesc(userId)
-                                          .orElseThrow(() -> {
-                                            log.error("[getJoinDetails] 해당 유저 질문 정보가 존재하지 않습니다. ===> userId: {}", userId);
-                                            return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                                          });
-
-    List<ProfileResponse> profiles = pictureRepository.findByUserId(userId)
+    List<ProfileResponse> profiles = pictureService.getAllByUserId(userId)
                                                       .stream()
                                                       .map(ProfileResponse::of)
                                                       .toList();
-    Integer totalThread = userAssetRepository.findTotalThreadByUserId(userId)
-                                                     .orElse(0);
+    int totalThread = userAssetService.getTotalThreadByUserId(userId);
     log.info("[getJoinDetails] 회원 전체 정보 조회 성공 userId = {}", userId);
     return JoinTotalDetails.of(userDetail, profiles, question, totalThread);
   }
 
-  public List<ProfileResponse> getProfiles(Long userId) {
-    return pictureRepository.findByUserId(userId)
+  public List<ProfileResponse> getProfiles(final Long userId) {
+    return pictureService.getAllByUserId(userId)
                             .stream()
                             .map(ProfileResponse::of)
                             .toList();
   }
 
-  public User getUserById(Long userId) {
+  public User getUserById(final Long userId) {
     return userRepository.findById(userId)
                          .orElseThrow(() -> {
                            log.info("[getUserById] 존재하지 않은 사용자입니다. ===> userId: {}", userId);
@@ -415,16 +382,16 @@ public class UserService {
   }
 
   @Transactional
-  public void withdrawUser(Long userId) {
-    userDetailRepository.deleteByUserId(userId);
-    pictureRepository.deleteByUserId(userId);
-    blockRepository.deleteByUserId(userId);
-    questionRepository.deleteByUserId(userId);
-    fcmTokenRepository.deleteByUserId(userId);
+  public void withdrawUser(final Long userId) {
+    userDetailService.deleteByUserId(userId);
+    pictureService.deleteByUserId(userId);
+    blockService.deleteByBlockerId(userId);
+    questionService.deleteByUserId(userId);
+    fcmTokenService.deleteByUserId(userId);
     userRepository.deleteByUserId(userId);
   }
 
-  private void sendNotificationToAdmin(String message) {
+  private void sendNotificationToAdmin(final String message) {
     User admin = userRepository.findAdminByEmailAndRole("admin", Role.ADMIN)
                                .orElseThrow(() -> {
                                  log.error("[sendNotificationToAdmin] 존재하지 않은 관리자입니다.");
@@ -435,20 +402,20 @@ public class UserService {
     notificationService.sendMessageTo(admin.getId(), notificationDto);
   }
 
-  private List<User> getBlockedUsers(List<BlockInfoRequest> blockInfoRequests) {
+  private List<User> getBlockedUsers(final List<BlockInfoRequest> blockInfoRequests) {
     return userRepository.findBlockedUsersByPhoneNumberAndName(blockInfoRequests);
   }
 
-  private Long completeFirstJoin(User user, UserDetail userDetail) {
+  private Long completeFirstJoin(final User user, final UserDetail userDetail) {
     // 랜덤 코드 생성
     user.createCode(random.createRandomCode());
     userRepository.save(user);
-    userDetailRepository.save(userDetail);
+    userDetailService.save(userDetail);
     log.debug("[completeFirstJoin] User, UserDetail 저장 완료 ===> userId: {}", user.getId());
     return user.getId();
   }
 
-  private User getExistingUser(RejoinUserRequest request) {
+  private User getExistingUser(final RejoinUserRequest request) {
     return userRepository.findByEmailAndCertificationFalse(request.email())
                          .orElseThrow(() -> {
                            log.error("[join] 심사 거부 이력이 없어 재가입 처리를 진행할 수 없습니다. ===> email = {}", request.email());
@@ -456,7 +423,7 @@ public class UserService {
                          });
   }
 
-  private void makeReview(User user, ReviewType type) {
+  private void makeReview(final User user, final ReviewType type) {
     reviewRepository.deleteByUserIdAndReviewType(user.getId(), type);
     Review review = Review.builder()
                           .user(user)
@@ -468,7 +435,7 @@ public class UserService {
     log.debug("[makeReview] Review 저장 완료");
   }
 
-  private User createNewUserFromRequest(RejoinUserRequest request, User existingUser, boolean mainChange, MultipartFile mainProfile) {
+  private User createNewUserFromRequest(final RejoinUserRequest request, final User existingUser, final boolean mainChange, final MultipartFile mainProfile) {
     User newUser = RejoinUserRequest.fromEntity(request);
     newUser.updateMainProfile(existingUser.getMainProfile());
 
@@ -481,31 +448,25 @@ public class UserService {
     return newUser;
   }
 
-  private void updateExistingUserDetail(User existingUser, UserDetail newUserDetail) {
-    UserDetail existingDetail = userDetailRepository.findByUserId(existingUser.getId())
-                                                    .orElseThrow(() -> {
-                                                      log.error("[updateExistingUserDetail] 이전 가입 이력이 존재하지 않습니다. email = {}",
-                                                                existingUser.getEmail());
-                                                      return new CustomException(UserErrorCode.JOIN_HISTORY_NOT_FOUND);
-                                                    });
-
+  private void updateExistingUserDetail(final Long userId, final UserDetail newUserDetail) {
+    UserDetail existingDetail = userDetailService.getByUserId(userId);
     existingDetail.updateDetailsForJoin(newUserDetail);
   }
 
-  private void deleteOldPictures(List<Long> deleteFileIds) {
+  private void deleteOldPictures(final List<Long> deleteFileIds) {
     if (deleteFileIds == null || deleteFileIds.isEmpty()) return;
 
-    List<Picture> pictures = pictureRepository.findByProfileIds(deleteFileIds);
+    List<Picture> pictures = pictureService.getAllByProfileIds(deleteFileIds);
     pictures.forEach(p -> s3Utils.deleteS3Image(p.getS3Path()));
-    pictureRepository.deleteProfileByIds(deleteFileIds);
+    pictureService.deleteProfileByIds(deleteFileIds);
   }
 
-  private void saveNewProfilesIfNeeded(List<MultipartFile> newProfiles, User user) {
+  private void saveNewProfilesIfNeeded(final List<MultipartFile> newProfiles, final User user) {
     if (newProfiles == null || newProfiles.isEmpty()) return;
     saveMultipartFileAndPictures(newProfiles, user);
   }
 
-  private void saveMultipartFileAndPictures(List<MultipartFile> files, User newUser) {
+  private void saveMultipartFileAndPictures(final List<MultipartFile> files, final User newUser) {
     if (files == null) {
       return;
     }
@@ -516,11 +477,19 @@ public class UserService {
                                                       .s3Path(s3Utils.saveImage(file))
                                                       .build())
                                   .toList();
-    pictureRepository.saveAll(pictures);
+    pictureService.saveAll(pictures);
     log.debug("[saveMultipartFileAndMakePictures] S3 저장 완료 ===> picture size: {}", pictures.size());
   }
 
-  public Optional<User> getUserBySocialId(Long socialId) {
+  public Optional<User> getUserBySocialId(final Long socialId) {
     return userRepository.findBySocialId(socialId);
+  }
+
+  public void checkExistsUser(final Long userId) {
+    boolean existUser = userRepository.existsById(userId);
+    if (!existUser) {
+      log.error("[checkExistsUser] 존재하지 않은 회원 (Not exist user) ===> userId: {}", userId);
+      throw new CustomException(UserErrorCode.USER_NOT_FOUND);
+    }
   }
 }

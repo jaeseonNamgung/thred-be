@@ -5,6 +5,8 @@ import com.thred.datingapp.common.entity.user.User;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.List;
+
 @ToString(callSuper = true, exclude = {"community", "user"})
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
@@ -53,4 +55,5 @@ public class Comment extends BaseEntity {
         this.isDelete = true;
         this.content = deleteMessage;
     }
+
 }

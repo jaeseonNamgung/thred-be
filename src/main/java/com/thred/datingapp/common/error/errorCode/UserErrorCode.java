@@ -29,6 +29,7 @@ public enum UserErrorCode implements ErrorCode {
   ROLE_NOT_FOUND(HttpStatus.BAD_REQUEST, "해당 역할은 존재하지 않습니다"),
   MAIN_PROFILE_REQUIRED(HttpStatus.BAD_REQUEST, "메인 프로필은 반드시 1장 있어야 합니다."),
   INSUFFICIENT_PROFILE_PHOTOS(HttpStatus.BAD_REQUEST, "사진은 총 4장 이상이어야 합니다."),
+  PROFILE_NOT_FOUND(HttpStatus.INTERNAL_SERVER_ERROR, "존재하지 않는 프로필입니다."),
   INVALID_SMOKING_STATUS(HttpStatus.BAD_REQUEST, "흡연 정보가 정확하지 않습니다."),
   INVALID_DRINKING_STATUS(HttpStatus.BAD_REQUEST, "음주 정보가 정확하지 않습니다."),
   INVALID_RELIGION_STATUS(HttpStatus.BAD_REQUEST, "종교 정보가 정확하지 않습니다."),

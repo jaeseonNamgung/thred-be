@@ -34,7 +34,7 @@ public class CommunityImage extends BaseEntity {
       this.community.getCommunityImages().remove(this);
     }
     this.community = community;
-    community.getCommunityImages().add(this);
+    this.community.getCommunityImages().add(this);
   }
 
 

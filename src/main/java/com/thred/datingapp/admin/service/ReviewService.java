@@ -22,6 +22,7 @@ import com.thred.datingapp.common.utils.RedisUtils;
 import com.thred.datingapp.main.service.CardService;
 import com.thred.datingapp.admin.repository.ReviewRepository;
 import com.thred.datingapp.user.service.QuestionService;
+import com.thred.datingapp.user.service.UserDetailService;
 import com.thred.datingapp.user.service.UserService;
 import com.thred.datingapp.user.properties.RedisProperties;
 import com.thred.datingapp.main.dto.request.EditProfileRequest;
@@ -66,6 +67,7 @@ public class ReviewService {
   private final CardService         cardService;
   private final RedisUtils          redisUtils;
   private final UserService         userService;
+  private final UserDetailService   userDetailService;
 
   @Transactional
   public void updateReview(final Long reviewId, final boolean check, final String reason) {
@@ -122,16 +124,16 @@ public class ReviewService {
   }
 
   private UserDetailsResponse getJoinReview(final Long reviewId, final Long userId) {
-    Question question = questionService.findQuestionByUserId(userId);
-    UserDetail userDetail = userService.getDetailsByUserIdFetchUser(userId);
+    Question question = questionService.getByUserId(userId);
+    UserDetail userDetail = userDetailService.getByUserIdFetchUserInfo(userId);
     log.info("[getJoinReview] 회원가입 심사 정보 조회 완료 ===> reviewId: {}", reviewId);
     return UserDetailsResponse.of(userDetail, question);
   }
 
   private UserDetailsResponse getEditProfileReview(final Long reviewId, final Long userId) {
     EditProfileRequest editProfile = (EditProfileRequest) redisUtils.getValue(RedisProperties.EDIT_PROFILE_KEY + userId);
-    Question question = questionService.findQuestionByUserId(userId);
-    UserDetail userDetail = userService.getDetailsByUserIdFetchUser(userId);
+    Question question = questionService.getByUserId(userId);
+    UserDetail userDetail = userDetailService.getByUserIdFetchUserInfo(userId);
     log.info("[getEditProfileReview] 프로필 수정 심사 정보 조회 완료 ===> reviewId: {}", reviewId);
     return UserDetailsResponse.of(editProfile, userDetail, question);
   }
@@ -146,7 +148,7 @@ public class ReviewService {
   private UserDetailsResponse getEditIntroduceReview(final Long reviewId, final Long userId) {
     EditTotalRequest editRequest = (EditTotalRequest) redisUtils.getValue(EDIT_INTRODUCE_KEY + userId);
     User user = userService.getUserById(userId);
-    Question question = questionService.findQuestionByUserId(userId);
+    Question question = questionService.getByUserId(userId);
     log.info("[getEditIntroduceReview] 자기소개 수정 심사 정보 조회 완료 ===> reviewId: {}", reviewId);
     return UserDetailsResponse.of(editRequest, user, question);
   }
@@ -154,8 +156,8 @@ public class ReviewService {
   private UserDetailsResponse getDefaultSuccessReview(final Long reviewId, final Review review) {
     if (review.getReviewStatus() == ReviewStatus.SUCCESS) {
       Long userId = review.getUser().getId();
-      Question question = questionService.findQuestionByUserId(userId);
-      UserDetail userDetail = userService.getDetailsByUserIdFetchUser(userId);
+      Question question = questionService.getByUserId(userId);
+      UserDetail userDetail = userDetailService.getByUserIdFetchUserInfo(userId);
       log.info("[getDefaultSuccessReview] 기타 타입 성공 심사 정보 조회 완료 ===> reviewId: {}", reviewId);
       return UserDetailsResponse.of(userDetail, question);
     }
@@ -167,7 +169,7 @@ public class ReviewService {
   private void processEditIntroduce(final Review review, final boolean check, final String reason) {
     if (check) {
       EditTotalRequest editTotalRequest = (EditTotalRequest) redisUtils.getValue(EDIT_INTRODUCE_KEY + review.getUser().getId());
-      Question question = questionService.findQuestionByUserId(review.getUser().getId());
+      Question question = questionService.getByUserId(review.getUser().getId());
       EditUserRequest editUserRequest =
           new EditUserRequest(editTotalRequest.user().introduce(), question.getQuestion1(), question.getQuestion2(), question.getQuestion3());
       userService.updateIntroduceOrQuestion(review.getUser().getId(), editUserRequest, true);

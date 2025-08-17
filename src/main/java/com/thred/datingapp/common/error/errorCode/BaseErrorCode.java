@@ -12,6 +12,8 @@ public enum BaseErrorCode implements ErrorCode {
     SUCCESS(HttpStatus.OK, "요청이 성공적으로 처리되었습니다."),
     BAD_REQUEST(HttpStatus.BAD_REQUEST, "요청 오류입니다."),
     TYPE_MISMATCH(HttpStatus.INTERNAL_SERVER_ERROR, "잘못된 타입입니다."),
+    LOCK_ACQUIRE_FAIL(HttpStatus.INTERNAL_SERVER_ERROR, "락 획득 실패"),
+    LOCK_ACQUIRE_INTERRUPTED(HttpStatus.INTERNAL_SERVER_ERROR, "락 획득 중 인터럽트 발생"),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류입니다. 잠시후 다시 시도 바랍니다. (이 오류가 반복되면 관리자에게 문의 바랍니다.)");
 
     private final HttpStatus httpStatus;

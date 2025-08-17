@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/user/join","/api/login/reissue/**","/api/user/join/**","/api/user/email/**",
                         "/api/user/code/**","/api/user/username/**","/api/user/*/check","/api/login/**", "/api/oauth/login",
                         "/api-docs/**", "/swagger-ui/**", "/api/chat/room/withdraw/user/**",
-                        "/api/community/withdraw/user/**", "/actuator/health").permitAll()
+                        "/api/community/withdraw/user/**", "/actuator/health", "/api/apple/notification/**").permitAll()
                 .anyRequest().authenticated())
                 .exceptionHandling(exception->{
                     // 인증 되지 않은 사용자가 보호된 리소스에 접근하려고 할때 예외 커스텀(토큰 자체가 없을때)

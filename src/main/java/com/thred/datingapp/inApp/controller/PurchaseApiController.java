@@ -7,7 +7,7 @@ import com.thred.datingapp.inApp.dto.request.ReceiptRequest;
 import com.thred.datingapp.inApp.dto.request.ThreadRequest;
 import com.thred.datingapp.inApp.dto.response.ProductResponse;
 import com.thred.datingapp.inApp.dto.response.ThreadUseHistoryResponse;
-import com.thred.datingapp.user.argumentResolver.Login;
+import com.thred.datingapp.common.annotation.Login;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

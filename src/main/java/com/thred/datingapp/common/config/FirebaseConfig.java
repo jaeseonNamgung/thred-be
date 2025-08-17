@@ -5,6 +5,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.thred.datingapp.common.error.CustomException;
 import com.thred.datingapp.common.error.errorCode.ChatErrorCode;
+import com.thred.datingapp.common.error.errorCode.FcmTokenErrorCode;
 import jakarta.annotation.PostConstruct;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,7 @@ public class FirebaseConfig {
             log.info("[init] FirebaseApp 초기화 성공");
         } catch (IOException e) {
             log.error("[init] firebase 초기화 에러 ===> errorMessage: {}", e.getMessage());
-            throw new CustomException(ChatErrorCode.NOTIFICATION_ERROR);
+            throw new CustomException(FcmTokenErrorCode.NOTIFICATION_INIT_ERROR);
         }
     }
 }
