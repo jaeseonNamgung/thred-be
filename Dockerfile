@@ -21,12 +21,13 @@ RUN ./gradlew dependencies --no-daemon || true
 COPY src src
 
 # 빌드 (테스트 스킵)
-RUN ./gradlew clean bootJar --no-daemon --build-cache -x test
+RUN ./gradlew build -x test --no-daemon --quiet
 
 # 3) 런타임
 FROM alpine:3.18.4
 ENV JAVA_HOME=/jre
 ENV PATH="$JAVA_HOME/bin:$PATH"
+ENV TZ=Asia/Seoul
 RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder-jre /jre $JAVA_HOME
 WORKDIR /app

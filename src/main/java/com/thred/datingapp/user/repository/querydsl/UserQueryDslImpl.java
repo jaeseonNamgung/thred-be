@@ -7,6 +7,7 @@ import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.thred.datingapp.common.entity.user.QUser;
 import com.thred.datingapp.common.entity.user.User;
 import com.thred.datingapp.common.entity.user.field.Gender;
+import com.thred.datingapp.common.entity.user.field.LoginType;
 import com.thred.datingapp.common.entity.user.field.Role;
 import com.thred.datingapp.common.entity.user.field.Smoke;
 import com.thred.datingapp.user.api.request.BlockInfoRequest;
@@ -32,20 +33,17 @@ public class UserQueryDslImpl implements UserQueryDsl {
 
   public Optional<User> findMatchBySmokePreference(Long userId, List<String> blocks, Gender gender, List<Long> ids, String city, Smoke smoke) {
 
-    BooleanBuilder condition = buildUserFiltersForSmokingMatch(userId, blocks, gender, ids)
-        .and(buildRegionalFilter(city, userDetail.user))
-        .and(buildSmokingPreferenceFilter(smoke));
+    BooleanBuilder condition = buildUserFiltersForSmokingMatch(userId, blocks, gender, ids).and(buildRegionalFilter(city, userDetail.user))
+                                                                                           .and(buildSmokingPreferenceFilter(smoke));
 
     User findUser = queryFactory.select(userDetail.user)
                                 .from(userDetail)
                                 .where(condition)
-                                .orderBy(Expressions.numberTemplate(Double.class, "function('RAND')")
-                                                    .asc())
+                                .orderBy(Expressions.numberTemplate(Double.class, "function('RAND')").asc())
                                 .fetchFirst();
 
     return Optional.ofNullable(findUser);
   }
-
 
   @Override
   public List<User> findBlockedUsersByPhoneNumberAndName(List<BlockInfoRequest> blockInfoRequests) {
@@ -54,9 +52,7 @@ public class UserQueryDslImpl implements UserQueryDsl {
       builder.or(user.username.eq(block.name()).and(user.phoneNumber.eq(block.number())));
     }
 
-    return queryFactory.selectFrom(user)
-        .where(builder)
-        .fetch();
+    return queryFactory.selectFrom(user).where(builder).fetch();
   }
 
   private BooleanBuilder buildUserFiltersForSmokingMatch(Long userId, List<String> blocks, Gender gender, List<Long> ids) {
@@ -68,8 +64,13 @@ public class UserQueryDslImpl implements UserQueryDsl {
                                .and(userDetail.user.role.eq(Role.USER));
   }
 
-  private BooleanExpression miniProfileCondition(QUser user, Long userId, List<Long> excludeUserIds, String city,
-                                                 LocalDate today, List<String> blocks, Gender gender) {
+  private BooleanExpression miniProfileCondition(QUser user,
+                                                 Long userId,
+                                                 List<Long> excludeUserIds,
+                                                 String city,
+                                                 LocalDate today,
+                                                 List<String> blocks,
+                                                 Gender gender) {
     return isCreatedToday(user, today).not()
                                       .and(user.id.notIn(excludeUserIds))
                                       .and(user.id.ne(userId))
@@ -81,15 +82,17 @@ public class UserQueryDslImpl implements UserQueryDsl {
   }
 
   private BooleanExpression isCreatedToday(QUser user, LocalDate today) {
-    return user.createdDate.year().eq(today.getYear())
+    return user.createdDate.year()
+                           .eq(today.getYear())
                            .and(user.createdDate.month().eq(today.getMonthValue()))
                            .and(user.createdDate.dayOfMonth().eq(today.getDayOfMonth()));
   }
 
   private BooleanExpression isCreatedCardToday(LocalDate today) {
-    return card.createdDate.year().eq(today.getYear())
-                                 .and(card.createdDate.month().eq(today.getMonthValue()))
-                                 .and(card.createdDate.dayOfMonth().eq(today.getDayOfMonth()));
+    return card.createdDate.year()
+                           .eq(today.getYear())
+                           .and(card.createdDate.month().eq(today.getMonthValue()))
+                           .and(card.createdDate.dayOfMonth().eq(today.getDayOfMonth()));
   }
 
   private BooleanExpression buildSmokingPreferenceFilter(Smoke smoke) {

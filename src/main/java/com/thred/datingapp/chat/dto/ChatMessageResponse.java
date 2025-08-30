@@ -47,7 +47,8 @@ public record ChatMessageResponse(
     public static ChatMessageResponse fromDto(
             Chat chat,
             User sender,
-            Long chatRoomId
+            Long chatRoomId,
+            String createdMessageDate
     ) {
         return ChatMessageResponse.of(
                 chat.getId(),
@@ -57,7 +58,7 @@ public record ChatMessageResponse(
                 sender.getEmail(),
                 sender.getMainProfile(),
                 chat.getMessage(),
-                chat.getCreatedDate().toString(),
+                createdMessageDate,
                 chat.isReadStatus(),
                 false
         );

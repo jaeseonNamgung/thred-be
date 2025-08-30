@@ -2,6 +2,7 @@ package com.thred.datingapp.user.service;
 
 import com.testFixture.UserFixture;
 import com.thred.datingapp.common.entity.user.User;
+import com.thred.datingapp.common.entity.user.field.LoginType;
 import com.thred.datingapp.common.entity.user.field.Role;
 import com.thred.datingapp.common.entity.user.field.UserState;
 import com.thred.datingapp.common.error.CustomException;
@@ -9,27 +10,19 @@ import com.thred.datingapp.common.error.errorCode.UserErrorCode;
 import com.thred.datingapp.common.utils.JwtUtils;
 import com.thred.datingapp.report.service.ReportService;
 import com.thred.datingapp.user.api.request.OAuthLoginRequest;
-import com.thred.datingapp.user.api.response.OAuthLoginResponse;
+import com.thred.datingapp.user.dto.LoginDto;
 import com.thred.datingapp.user.dto.KakaoDto;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.text.DateFormat;
-import java.time.LocalDate;
-import java.util.Date;
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.InstanceOfAssertFactories.DATE;
-import static org.assertj.core.api.InstanceOfAssertFactories.LIST;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
@@ -55,7 +48,7 @@ class LoginServiceMockTest {
   @DisplayName("AccessToken이 null 일 경우 예외 발생")
   void userLogin_whenAccessTokenIsNullOrBlank_thenThrowsInvalidTokenError() {
     // given
-    OAuthLoginRequest oAuthLoginRequest = new OAuthLoginRequest(null);
+    OAuthLoginRequest oAuthLoginRequest = new OAuthLoginRequest(null, LoginType.KAKAO);
     // when
     CustomException exception = assertThrows(CustomException.class, () -> sut.loginWithOAuth(oAuthLoginRequest));
     // then
@@ -85,11 +78,11 @@ class LoginServiceMockTest {
     given(userService.getUserBySocialId(anyLong())).willReturn(Optional.empty());
 
     // when
-    OAuthLoginResponse oAuthLoginResponse = sut.loginWithOAuth(oAuthLoginRequest);
+    LoginDto loginDto = sut.loginWithOAuth(oAuthLoginRequest);
     // then
-    assertThat(oAuthLoginResponse.status()).isFalse();
-    assertThat(oAuthLoginResponse.certification()).isFalse();
-    assertThat(oAuthLoginResponse.role()).isNull();
+    assertThat(loginDto.status()).isFalse();
+    assertThat(loginDto.certification()).isFalse();
+    assertThat(loginDto.role()).isNull();
     then(oAuthService).should().getKakaoUserInfo(anyString());
     then(userService).should().getUserBySocialId(anyLong());
   }
@@ -103,11 +96,11 @@ class LoginServiceMockTest {
     given(userService.getUserBySocialId(anyLong())).willReturn(Optional.of(UserFixture.createNonCertificationUser()));
 
     // when
-    OAuthLoginResponse oAuthLoginResponse = sut.loginWithOAuth(oAuthLoginRequest);
+    LoginDto loginDto = sut.loginWithOAuth(oAuthLoginRequest);
     // then
-    assertThat(oAuthLoginResponse.status()).isTrue();
-    assertThat(oAuthLoginResponse.certification()).isFalse();
-    assertThat(oAuthLoginResponse.role()).isEqualTo(Role.USER.getRole());
+    assertThat(loginDto.status()).isTrue();
+    assertThat(loginDto.certification()).isFalse();
+    assertThat(loginDto.role()).isEqualTo(Role.USER.getRole());
     then(oAuthService).should().getKakaoUserInfo(anyString());
     then(userService).should().getUserBySocialId(anyLong());
   }
@@ -145,21 +138,21 @@ class LoginServiceMockTest {
     given(oAuthService.getKakaoUserInfo(anyString())).willReturn(UserFixture.createKakaoDto());
     given(userService.getUserBySocialId(anyLong())).willReturn(Optional.of(user));
     given(reportService.getTotalRemainingSuspensionDays(anyLong())).willReturn(0);
-    given(jwtUtils.createJwt(anyString(), anyLong(), anyLong(), anyString(), anyLong()))
+    given(jwtUtils.createJwt(anyString(), anyLong(), anyString(), anyString(), anyLong()))
         .willReturn("accessToken").willReturn("refreshToken");
 
     // when
-    OAuthLoginResponse oAuthLoginResponse = sut.loginWithOAuth(oAuthLoginRequest);
+    LoginDto loginDto = sut.loginWithOAuth(oAuthLoginRequest);
     // then
-    assertThat(oAuthLoginResponse.status()).isTrue();
-    assertThat(oAuthLoginResponse.certification()).isTrue();
-    assertThat(oAuthLoginResponse.role()).isEqualTo(Role.USER.getRole());
-    assertThat(oAuthLoginResponse.accessToken()).isEqualTo("accessToken");
-    assertThat(oAuthLoginResponse.refreshToken()).isEqualTo("refreshToken");
+    assertThat(loginDto.status()).isTrue();
+    assertThat(loginDto.certification()).isTrue();
+    assertThat(loginDto.role()).isEqualTo(Role.USER.getRole());
+    assertThat(loginDto.accessToken()).isEqualTo("accessToken");
+    assertThat(loginDto.refreshToken()).isEqualTo("refreshToken");
     then(oAuthService).should().getKakaoUserInfo(anyString());
     then(userService).should().getUserBySocialId(anyLong());
     then(reportService).should().getTotalRemainingSuspensionDays(anyLong());
-    then(jwtUtils).should(times(2)).createJwt(anyString(), anyLong(), anyLong(), anyString(), anyLong());
+    then(jwtUtils).should(times(2)).createJwt(anyString(), anyLong(),anyString(), anyString(), anyLong());
   }
 
 }

@@ -4,9 +4,9 @@
 
 - jenkins
     swagger uri: http://43.203.73.202:8080/swagger-ui/index.html
-    jenkins url: http://43.203.73.202:7777
-    jenkins ID: thred0920_dev
-    jenkins PW: tjdrhdgoTek1!(성공했다1!)
+    jenkins url: http://localhost:7777
+    jenkins ID: thred0920
+    jenkins PW: 007000
 
 - aws 계정
     계정 ID(12자리) 또는 계정 별칭: thred0920

@@ -2,12 +2,14 @@ package com.thred.datingapp.inApp.controller;
 
 import com.thred.datingapp.common.api.response.ApiDataResponse;
 import com.thred.datingapp.common.api.response.PageResponse;
+import com.thred.datingapp.inApp.Service.ProductService;
 import com.thred.datingapp.inApp.Service.PurchaseService;
 import com.thred.datingapp.inApp.dto.request.ReceiptRequest;
 import com.thred.datingapp.inApp.dto.request.ThreadRequest;
 import com.thred.datingapp.inApp.dto.response.ProductResponse;
 import com.thred.datingapp.inApp.dto.response.ThreadUseHistoryResponse;
 import com.thred.datingapp.common.annotation.Login;
+import com.thred.datingapp.user.service.UserAssetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +23,9 @@ import java.util.List;
 @RestController
 public class PurchaseApiController {
 
-    private final PurchaseService purchaseService;
+    private final PurchaseService  purchaseService;
+    private final UserAssetService userAssetService;
+    private final ProductService   productService;
 
     @PostMapping("/verify/receipt")
     public ApiDataResponse<Boolean> verifyReceipt(
@@ -58,14 +62,14 @@ public class PurchaseApiController {
     @GetMapping("/product/all")
     public ApiDataResponse<List<ProductResponse>> getAllProduct(){
         log.info("[API CALL] /api/product/all - 상품 조회 요청");
-        return ApiDataResponse.ok(purchaseService.getAllProducts());
+        return ApiDataResponse.ok(productService.getProductAll());
     }
 
     @GetMapping("/thread")
     public ApiDataResponse<Integer> getTotalThread(@Login Long userId) {
         log.info("[API CALL] /api/thread - 실타래 수량 조회 요청");
         log.debug("[getTotalThread] userId = {}", userId);
-        return ApiDataResponse.ok(purchaseService.getTotalThread(userId));
+        return ApiDataResponse.ok(userAssetService.getTotalThreadByUserId(userId));
     }
 
     @GetMapping("/history/{purchaseTargetUserId}")

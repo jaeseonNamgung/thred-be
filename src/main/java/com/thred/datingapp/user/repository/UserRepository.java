@@ -1,6 +1,7 @@
 package com.thred.datingapp.user.repository;
 
 import com.thred.datingapp.common.entity.user.User;
+import com.thred.datingapp.common.entity.user.field.LoginType;
 import com.thred.datingapp.common.entity.user.field.Role;
 import com.thred.datingapp.user.repository.querydsl.UserQueryDsl;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,4 +42,7 @@ public interface UserRepository extends JpaRepository<User, Long>, UserQueryDsl 
 
   @Query("select u from User u where u.socialId = :socialId")
   Optional<User> findBySocialId(@Param("socialId") Long socialId);
+
+  @Query("select u from User u where u.phoneNumber = :phoneNumber and u.loginType = :loginType")
+  Optional<User> findByPhoneNumberAndLoginType(@Param("phoneNumber") String phoneNumber, @Param("loginType") LoginType loginType);
 }

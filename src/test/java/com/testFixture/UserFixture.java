@@ -204,6 +204,7 @@ public class UserFixture {
   public static JoinUserRequest createJoinUserRequest(int index) {
     return new JoinUserRequest(
         (long) index,
+        LoginType.KAKAO,
         "user" + index + "@example.com",
         index % 2 == 0 ? "남성" : "여성",
         "유저" + index,
@@ -268,7 +269,7 @@ public class UserFixture {
   }
 
   public static OAuthLoginRequest createOAuthLoginRequest() {
-    return new OAuthLoginRequest("accessToken");
+    return new OAuthLoginRequest("accessToken", LoginType.KAKAO);
   }
 
   public static KakaoDto createKakaoDto() {

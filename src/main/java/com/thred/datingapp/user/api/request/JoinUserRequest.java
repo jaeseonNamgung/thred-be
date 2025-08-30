@@ -2,10 +2,8 @@ package com.thred.datingapp.user.api.request;
 
 import com.thred.datingapp.common.entity.user.Question;
 import com.thred.datingapp.common.entity.user.User;
-import com.thred.datingapp.common.entity.user.field.Address;
-import com.thred.datingapp.common.entity.user.field.Gender;
-import com.thred.datingapp.common.entity.user.field.PartnerGender;
-import com.thred.datingapp.common.entity.user.field.Role;
+import com.thred.datingapp.common.entity.user.field.*;
+import com.thred.datingapp.common.utils.PhoneNumberUtils;
 import jakarta.validation.constraints.NotEmpty;
 
 import java.time.LocalDate;
@@ -13,6 +11,7 @@ import java.time.format.DateTimeFormatter;
 
 public record JoinUserRequest(
         Long socialId,
+        LoginType loginType,
         @NotEmpty(message = "이메일은 필수입니다.")
         String email,
         @NotEmpty(message = "성별은 필수입니다.")
@@ -47,6 +46,7 @@ public record JoinUserRequest(
 
       return User.builder()
                 .socialId(request.socialId())
+                .loginType(LoginType.KAKAO)
                 .role(Role.USER)
                 .username(request.username())
                 .birth(birthLocalDate)
@@ -55,7 +55,7 @@ public record JoinUserRequest(
                 .address(Address.of(request.city(), request.province()))
                 .introduce(request.introduce())
                 .partnerGender(PartnerGender.findGender(request.partnerGender()))
-                .phoneNumber(request.number())
+                .phoneNumber(PhoneNumberUtils.toE164Format(request.number()))
                 .certification(false)
                 .inputCode(request.code())
                 .build();

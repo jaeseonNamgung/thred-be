@@ -6,6 +6,8 @@ services:
     volumes:
       - /Users/namgungjaeseon/my-work/my-project/thred/volums/jenkins:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - TZ=Asia/Seoul
     ports:
       - "7777:8080"
     

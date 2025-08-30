@@ -32,8 +32,8 @@ import java.util.Base64;
 public class GoogleInAppService {
 
     private final GoogleCredentialsConfig credentialsConfig;
-    private final ReceiptManagerService receiptManagerService;
-    private final ObjectMapper objectMapper;
+    private final ReceiptService          receiptService;
+    private final ObjectMapper            objectMapper;
 
     @Value("${google.in-app.package-name}")
     private String packageName;
@@ -94,11 +94,11 @@ public class GoogleInAppService {
     private void handleRefund(final DeveloperNotification developerNotification){
         VoidedPurchaseNotification voidedPurchaseNotification = developerNotification.voidedPurchaseNotification();
         String orderId = voidedPurchaseNotification.orderId();
-        Receipt receipt = receiptManagerService.validationReceipt(orderId);
+        Receipt receipt = receiptService.validationReceipt(orderId);
 
         RevocationReason revocationReason = RevocationReason.findType(voidedPurchaseNotification.refundType());
         Long eventTimeMillis = developerNotification.eventTimeMillis();
-        receiptManagerService.updateRevocationStatus(revocationReason, eventTimeMillis, RevocationStatus.SUCCESS, receipt);
+        receiptService.updateRevocationStatus(revocationReason, eventTimeMillis, RevocationStatus.SUCCESS, receipt);
     }
 
 

@@ -7,6 +7,7 @@ import com.thred.datingapp.admin.repository.ReviewRepository;
 import com.thred.datingapp.chat.dto.NotificationDto;
 import com.thred.datingapp.chat.repository.FcmTokenRepository;
 import com.thred.datingapp.common.annotation.DistributedLock;
+import com.thred.datingapp.common.entity.user.field.LoginType;
 import com.thred.datingapp.common.service.NotificationService;
 import com.thred.datingapp.common.type.NotificationType;
 import com.thred.datingapp.common.entity.admin.Review;
@@ -18,6 +19,7 @@ import com.thred.datingapp.common.entity.user.UserDetail;
 import com.thred.datingapp.common.entity.user.field.Role;
 import com.thred.datingapp.common.error.CustomException;
 import com.thred.datingapp.common.error.errorCode.UserErrorCode;
+import com.thred.datingapp.common.utils.PhoneNumberUtils;
 import com.thred.datingapp.common.utils.RedisUtils;
 import com.thred.datingapp.common.utils.S3Utils;
 import com.thred.datingapp.inApp.Service.PurchaseService;
@@ -61,19 +63,15 @@ public class UserService {
   private final RandomStringGeneratorService random;
   private final UserDetailService            userDetailService;
   private final QuestionService              questionService;
-  private final BlockService                 blockService;
   private final S3Utils                      s3Utils;
   private final RedisUtils                   redisUtils;
   private final PictureService               pictureService;
   private final FcmTokenService              fcmTokenService;
   private final UserAssetService             userAssetService;
-  private final PurchaseService              purchaseService;
   private final UserRepository               userRepository;
 
-
   public boolean checkDuplicateEmail(final String email) {
-    return userRepository.findByEmail(email)
-                         .isPresent();
+    return userRepository.findByEmail(email).isPresent();
   }
 
   public boolean checkDuplicateName(final String username) {
@@ -86,7 +84,10 @@ public class UserService {
 
   @Transactional
   @DistributedLock(key = "#joinUserRequest.socialId", waitTime = 5, leaseTime = 10)
-  public Long join(final JoinUserRequest joinUserRequest, final JoinDetailsRequest details, final MultipartFile mainProfile, final List<MultipartFile> files) {
+  public Long join(final JoinUserRequest joinUserRequest,
+                   final JoinDetailsRequest details,
+                   final MultipartFile mainProfile,
+                   final List<MultipartFile> files) {
     boolean isExistUser = userRepository.existsByEmail(joinUserRequest.email());
 
     if (isExistUser) {
@@ -108,10 +109,7 @@ public class UserService {
     // 5. Judgment 저장
     makeReview(newUser, ReviewType.JOIN);
     // 6. FCM 정보 저장
-    FcmToken fcmToken = FcmToken.builder()
-                                .token(joinUserRequest.fcmToken())
-                                .member(newUser)
-                                .build();
+    FcmToken fcmToken = FcmToken.builder().token(joinUserRequest.fcmToken()).member(newUser).build();
     fcmTokenService.save(fcmToken);
     // 7. FCM 알림 전송
     sendNotificationToAdmin(String.format(USER_REGISTRATION_REQUEST_MESSAGE, newUser.getUsername(), newUser.getEmail()));
@@ -120,8 +118,12 @@ public class UserService {
   }
 
   @Transactional
-  public void rejoin(final RejoinUserRequest rejoinUserRequest, final JoinDetailsRequest details, final boolean mainChange, final MultipartFile mainProfile,
-                     final List<Long> deleteFileIds, final List<MultipartFile> newProfiles) {
+  public void rejoin(final RejoinUserRequest rejoinUserRequest,
+                     final JoinDetailsRequest details,
+                     final boolean mainChange,
+                     final MultipartFile mainProfile,
+                     final List<Long> deleteFileIds,
+                     final List<MultipartFile> newProfiles) {
 
     // 1. 기존 회원 조회
     User existingUser = getExistingUser(rejoinUserRequest);
@@ -143,18 +145,6 @@ public class UserService {
     sendNotificationToAdmin(USER_REGISTRATION_REQUEST_MESSAGE);
   }
 
-  // 추천인 코드
-  @Transactional
-  public void joinCodeEvent(final Long referredUserId, final String code) {
-    User referrerUser = userRepository.findByCode(code)
-                                      .orElseThrow(() -> {
-                                        log.error("[joinCodeEvent] 존재하지 않은 코드입니다.(Not exist user) ===> referralCode: {}", code);
-                                        return new CustomException(UserErrorCode.INVALID_CODE);
-                                      });
-    User referredUser = getUserById(referredUserId);
-    purchaseService.updateThreadQuantityByReferralCode(referredUser, referrerUser);
-  }
-
   @Transactional
   public void changeJoinStatus(final Long userId, final boolean result) {
     User user = getUserById(userId);
@@ -167,37 +157,9 @@ public class UserService {
   }
 
   @Transactional
-  public void setBlockNumber(final Long userId, final List<BlockInfoRequest> blockInfoRequests) {
-    // 1. 차단 요청을 보낸 회원 조회 (차단자)
-    User blocker = getUserById(userId);
-    // 2. 차단 대상 회원 목록 조회 (이름 + 전화번호로 매칭)
-    List<User> blockedUsers = getBlockedUsers(blockInfoRequests);
-    // 3. 해당 사용자가 이전에 차단했던 모든 기록 삭제 (차단 목록 초기화)
-    blockService.deleteByBlockerId(userId);
-    // 4. 차단 요청 목록이 비어 있을 경우, 차단 처리 없이 종료
-    if (blockInfoRequests.isEmpty()) {
-      log.info("[setBlockNumber] 차단된 연락처 없음 ===> userId: {}", userId);
-      return;
-    }
-    // 5. 새로운 차단 대상이 있을 경우, 차단 정보 저장
-    blockService.bulkInsert(blocker, blockedUsers);
-    log.info("[setBlockNumber] 연락처 차단 정보 수정 완료 ===> userId: {}", userId);
-  }
-
-  public BlockNumbersResponse getBlockNumber(final Long userId) {
-    List<Block> blocks = blockService.getAllByUserId(userId);
-    List<BlockNumberResponse> blockResponses = blocks.stream()
-                                                     .map(block -> new BlockNumberResponse(block.getBlockedUser().getUsername(),
-                                                                                           block.getBlockedUser().getPhoneNumber()))
-                                                     .toList();
-    log.info("[getBlockNumber] 연락처 차단 조회 성공 ===> blockerId: {}", userId);
-    return new BlockNumbersResponse(blockResponses);
-  }
-
-  @Transactional
   public void changePhoneNumber(final Long id, final String number) {
     User user = getUserById(id);
-    user.changePhoneNumber(number);
+    user.changePhoneNumber(PhoneNumberUtils.toE164Format(number));
     log.info("[changePhoneNumber] 핸드폰 번호 수정 완료 ===> userId: {}", id);
   }
 
@@ -211,7 +173,10 @@ public class UserService {
   }
 
   @Transactional
-  public void sendEditProfilesRequest(final Long userId, final boolean mainChange, final MultipartFile mainProfile, final List<Long> changedProfileIds,
+  public void sendEditProfilesRequest(final Long userId,
+                                      final boolean mainChange,
+                                      final MultipartFile mainProfile,
+                                      final List<Long> changedProfileIds,
                                       List<MultipartFile> changedExtraProfiles) {
     Map<String, String> profilesInfo = new HashMap<>();
     if (changedExtraProfiles != null) {
@@ -233,9 +198,7 @@ public class UserService {
       existImages = pictureService.getAllByUserId(userId);
     }
 
-    List<String> existImagePaths = existImages.stream()
-                                              .map(Picture::getS3Path)
-                                              .toList();
+    List<String> existImagePaths = existImages.stream().map(Picture::getS3Path).toList();
     EditProfileRequest updateInfo = EditProfileRequest.of(mainChange, main, changedProfileIds, existImagePaths, profilesInfo);
     Optional<Review> userCheck = reviewRepository.findByUserIdAndReviewType(userId, ReviewType.EDIT_PROFILE);
 
@@ -246,11 +209,9 @@ public class UserService {
         log.info("[sendEditProfilesRequest] 기존 심사 요청 기록 삭제 ===> userId: {}", userId);
         EditProfileRequest before = (EditProfileRequest) redisUtils.get(EDIT_PROFILE_KEY + userId);
         s3Utils.deleteS3Image(before.newMainProfile());
-        Set<String> profiles = before.newExtraProfiles()
-                                     .keySet();
+        Set<String> profiles = before.newExtraProfiles().keySet();
         for (String profile : profiles) {
-          s3Utils.deleteS3Image(before.newExtraProfiles()
-                                      .get(profile));
+          s3Utils.deleteS3Image(before.newExtraProfiles().get(profile));
         }
       }
     }
@@ -281,11 +242,7 @@ public class UserService {
   @Transactional
   public void saveEditImages(final Map<String, String> files, final User user) {
     for (String originalFileName : files.keySet()) {
-      Picture picture = Picture.builder()
-                               .user(user)
-                               .originalFileName(originalFileName)
-                               .s3Path(files.get(originalFileName))
-                               .build();
+      Picture picture = Picture.builder().user(user).originalFileName(originalFileName).s3Path(files.get(originalFileName)).build();
       pictureService.save(picture);
     }
   }
@@ -298,14 +255,15 @@ public class UserService {
   }
 
   @Transactional
-  public void updateUserAndDetails(final Long id, final boolean questionChange, final boolean introduceChange, final EditUserRequest editUserRequest,
+  public void updateUserAndDetails(final Long id,
+                                   final boolean questionChange,
+                                   final boolean introduceChange,
+                                   final EditUserRequest editUserRequest,
                                    EditDetailsRequest details) {
     User user = getUserById(id);
     updateDetails(details, id);
     List<Picture> pictures = pictureService.getAllByUserId(id);
-    List<String> picturesUrl = pictures.stream()
-                                       .map(Picture::getS3Path)
-                                       .toList();
+    List<String> picturesUrl = pictures.stream().map(Picture::getS3Path).toList();
     EditTotalRequest editTotalRequest = EditTotalRequest.of(editUserRequest, details, user.getMainProfile(), picturesUrl);
     int EDIT_TOKEN_TIME = 10000;
     redisUtils.saveWithTTL(EDIT_QUESTION_KEY + id, editTotalRequest, EDIT_TOKEN_TIME, TimeUnit.SECONDS);
@@ -322,15 +280,14 @@ public class UserService {
 
   @Transactional
   public void updateIntroduceOrQuestion(final Long id, final EditUserRequest userInfo, final boolean isIntroduceChange) {
-    User user = userRepository.findById(id)
-                              .orElseThrow(() -> {
-                                log.error("[updateIntroduceAndQuestion] 존재하지 않은 사용자입니다. ===> userId: {}", id);
-                                return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                              });
+    User user = userRepository.findById(id).orElseThrow(() -> {
+      log.error("[updateIntroduceAndQuestion] 존재하지 않은 사용자입니다. ===> userId: {}", id);
+      return new CustomException(UserErrorCode.USER_NOT_FOUND);
+    });
     if (isIntroduceChange) {
       user.updateIntroduce(userInfo.introduce());
       log.info("[updateIntroduceOrQuestion] 자기소개 수정 완료 ===> userId: {}", id);
-    }else {
+    } else {
       Question question = EditUserRequest.toQuestionEntity(userInfo, user);
       questionService.save(question);
       log.info("[updateIntroduceOrQuestion] 질문 수정 완료 ===> userId: {}", id);
@@ -352,28 +309,21 @@ public class UserService {
     UserDetail userDetail = userDetailService.getByUserIdFetchUserInfo(userId);
     Question question = questionService.getByUserId(userId);
 
-    List<ProfileResponse> profiles = pictureService.getAllByUserId(userId)
-                                                      .stream()
-                                                      .map(ProfileResponse::of)
-                                                      .toList();
+    List<ProfileResponse> profiles = pictureService.getAllByUserId(userId).stream().map(ProfileResponse::of).toList();
     int totalThread = userAssetService.getTotalThreadByUserId(userId);
     log.info("[getJoinDetails] 회원 전체 정보 조회 성공 userId = {}", userId);
     return JoinTotalDetails.of(userDetail, profiles, question, totalThread);
   }
 
   public List<ProfileResponse> getProfiles(final Long userId) {
-    return pictureService.getAllByUserId(userId)
-                            .stream()
-                            .map(ProfileResponse::of)
-                            .toList();
+    return pictureService.getAllByUserId(userId).stream().map(ProfileResponse::of).toList();
   }
 
   public User getUserById(final Long userId) {
-    return userRepository.findById(userId)
-                         .orElseThrow(() -> {
-                           log.info("[getUserById] 존재하지 않은 사용자입니다. ===> userId: {}", userId);
-                           return new CustomException(UserErrorCode.USER_NOT_FOUND);
-                         });
+    return userRepository.findById(userId).orElseThrow(() -> {
+      log.info("[getUserById] 존재하지 않은 사용자입니다. ===> userId: {}", userId);
+      return new CustomException(UserErrorCode.USER_NOT_FOUND);
+    });
   }
 
   // 회원 탈퇴 로직 구현 (회원 상태가 WITHDRAWO_REQUEST 이고 30일이 지난 User ID 조회)
@@ -382,28 +332,49 @@ public class UserService {
   }
 
   @Transactional
-  public void withdrawUser(final Long userId) {
-    userDetailService.deleteByUserId(userId);
-    pictureService.deleteByUserId(userId);
-    blockService.deleteByBlockerId(userId);
-    questionService.deleteByUserId(userId);
-    fcmTokenService.deleteByUserId(userId);
+  public void deleteByUserId(final Long userId) {
+    if (userId == null) {
+      log.error("[deleteByUserId] userId is Null");
+      throw new CustomException(UserErrorCode.USER_NOT_FOUND);
+    }
     userRepository.deleteByUserId(userId);
   }
 
-  private void sendNotificationToAdmin(final String message) {
-    User admin = userRepository.findAdminByEmailAndRole("admin", Role.ADMIN)
-                               .orElseThrow(() -> {
-                                 log.error("[sendNotificationToAdmin] 존재하지 않은 관리자입니다.");
-                                 return new CustomException(UserErrorCode.ADMIN_NOT_FOUND);
-                               });
-    NotificationDto notificationDto = NotificationDto.of(NotificationType.ADMIN_MESSAGE_SENT, admin.getId(), admin.getUsername(), null, message,
-                                                         LocalDateTime.now());
-    notificationService.sendMessageTo(admin.getId(), notificationDto);
+  public void checkExistsUser(final Long userId) {
+    boolean existUser = userRepository.existsById(userId);
+    if (!existUser) {
+      log.error("[checkExistsUser] 존재하지 않은 회원 (Not exist user) ===> userId: {}", userId);
+      throw new CustomException(UserErrorCode.USER_NOT_FOUND);
+    }
   }
 
-  private List<User> getBlockedUsers(final List<BlockInfoRequest> blockInfoRequests) {
+  public List<User> getAllBlockedUsersByPhoneNumberAndName(final List<BlockInfoRequest> blockInfoRequests) {
     return userRepository.findBlockedUsersByPhoneNumberAndName(blockInfoRequests);
+  }
+
+  public Optional<User> getUserBySocialId(final Long socialId) {
+    return userRepository.findBySocialId(socialId);
+  }
+
+  public Optional<User> getUserByPhoneNumberAndLoginType(final String phoneNumber, final LoginType loginType) {
+    return userRepository.findByPhoneNumberAndLoginType(phoneNumber, loginType);
+  }
+
+  public User getByCode(final String code) {
+    return userRepository.findByCode(code).orElseThrow(() -> {
+      log.error("[getByCode] 존재하지 않은 코드입니다.(Not exist user) ===> referralCode: {}", code);
+      return new CustomException(UserErrorCode.INVALID_CODE);
+    });
+  }
+
+  private void sendNotificationToAdmin(final String message) {
+    User admin = userRepository.findAdminByEmailAndRole("admin", Role.ADMIN).orElseThrow(() -> {
+      log.error("[sendNotificationToAdmin] 존재하지 않은 관리자입니다.");
+      return new CustomException(UserErrorCode.ADMIN_NOT_FOUND);
+    });
+    NotificationDto notificationDto =
+        NotificationDto.of(NotificationType.ADMIN_MESSAGE_SENT, admin.getId(), admin.getUsername(), null, message, LocalDateTime.now());
+    notificationService.sendMessageTo(admin.getId(), notificationDto);
   }
 
   private Long completeFirstJoin(final User user, final UserDetail userDetail) {
@@ -416,26 +387,23 @@ public class UserService {
   }
 
   private User getExistingUser(final RejoinUserRequest request) {
-    return userRepository.findByEmailAndCertificationFalse(request.email())
-                         .orElseThrow(() -> {
-                           log.error("[join] 심사 거부 이력이 없어 재가입 처리를 진행할 수 없습니다. ===> email = {}", request.email());
-                           return new CustomException(UserErrorCode.REJECT_HISTORY_NOT_FOUND);
-                         });
+    return userRepository.findByEmailAndCertificationFalse(request.email()).orElseThrow(() -> {
+      log.error("[join] 심사 거부 이력이 없어 재가입 처리를 진행할 수 없습니다. ===> email = {}", request.email());
+      return new CustomException(UserErrorCode.REJECT_HISTORY_NOT_FOUND);
+    });
   }
 
   private void makeReview(final User user, final ReviewType type) {
     reviewRepository.deleteByUserIdAndReviewType(user.getId(), type);
-    Review review = Review.builder()
-                          .user(user)
-                          .reviewType(type)
-                          .reviewStatus(ReviewStatus.PENDING)
-                          .reason(null)
-                          .build();
+    Review review = Review.builder().user(user).reviewType(type).reviewStatus(ReviewStatus.PENDING).reason(null).build();
     reviewRepository.save(review);
     log.debug("[makeReview] Review 저장 완료");
   }
 
-  private User createNewUserFromRequest(final RejoinUserRequest request, final User existingUser, final boolean mainChange, final MultipartFile mainProfile) {
+  private User createNewUserFromRequest(final RejoinUserRequest request,
+                                        final User existingUser,
+                                        final boolean mainChange,
+                                        final MultipartFile mainProfile) {
     User newUser = RejoinUserRequest.fromEntity(request);
     newUser.updateMainProfile(existingUser.getMainProfile());
 
@@ -479,17 +447,5 @@ public class UserService {
                                   .toList();
     pictureService.saveAll(pictures);
     log.debug("[saveMultipartFileAndMakePictures] S3 저장 완료 ===> picture size: {}", pictures.size());
-  }
-
-  public Optional<User> getUserBySocialId(final Long socialId) {
-    return userRepository.findBySocialId(socialId);
-  }
-
-  public void checkExistsUser(final Long userId) {
-    boolean existUser = userRepository.existsById(userId);
-    if (!existUser) {
-      log.error("[checkExistsUser] 존재하지 않은 회원 (Not exist user) ===> userId: {}", userId);
-      throw new CustomException(UserErrorCode.USER_NOT_FOUND);
-    }
   }
 }

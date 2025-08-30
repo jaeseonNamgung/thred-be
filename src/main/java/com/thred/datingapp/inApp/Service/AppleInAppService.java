@@ -33,9 +33,9 @@ import java.util.UUID;
 @Service
 public class AppleInAppService {
 
-    private final SignedDataVerifier signedDataVerifier = null;
-    private final AppStoreServerAPIClient appStoreServerAPIClient = null;
-    private final ReceiptManagerService receiptManagerService;
+    private final SignedDataVerifier signedDataVerifier;
+    private final AppStoreServerAPIClient appStoreServerAPIClient;
+    private final ReceiptService          receiptService;
 
     public VerifiedProductDto verifyReceipt(final String receipt){
 
@@ -72,6 +72,7 @@ public class AppleInAppService {
                 case CONSUMPTION_REQUEST -> handlerConsumptionRequest(responseBodyV2DecodedPayload);
                 case REFUND -> processRefund(responseBodyV2DecodedPayload, RevocationStatus.SUCCESS);
                 case REFUND_DECLINED -> processRefund(responseBodyV2DecodedPayload, RevocationStatus.FAILED);
+                case TEST -> log.info("[processAppleInAppNotification] 알림 테스트 성공 ===> payload: {}", responseBodyV2DecodedPayload);
             }
             return true;
         } catch (VerificationException e) {
@@ -86,11 +87,11 @@ public class AppleInAppService {
         JWSTransactionDecodedPayload decodedPayload = extractTransactionIdFromPayload(responseBodyV2DecodedPayload);
         String transactionId = decodedPayload.getTransactionId();
         // 2. receipt, userAsset, product가 존재하는지 검증
-        Receipt receipt = receiptManagerService.validationReceipt(transactionId);
+        Receipt receipt = receiptService.validationReceipt(transactionId);
         // 3. 환불 상태 처리 및 실타래 갯수 변경
         RevocationReason revocationReason = RevocationReason.findType(decodedPayload.getRevocationReason().getValue());
         Long revocationDate = decodedPayload.getRevocationDate();
-        receiptManagerService.updateRevocationStatus(revocationReason, revocationDate, revocationStatus, receipt);
+        receiptService.updateRevocationStatus(revocationReason, revocationDate, revocationStatus, receipt);
     }
 
     private void handlerConsumptionRequest(final ResponseBodyV2DecodedPayload responseBodyV2DecodedPayload) throws VerificationException {
@@ -99,12 +100,12 @@ public class AppleInAppService {
             JWSTransactionDecodedPayload decodedPayload = extractTransactionIdFromPayload(responseBodyV2DecodedPayload);
 
             // 2. receipt, userAsset, product가 존재하는지 검증
-            Receipt receipt = receiptManagerService.validationReceipt(decodedPayload.getTransactionId());
+            Receipt receipt = receiptService.validationReceipt(decodedPayload.getTransactionId());
 
             // 3. 환불 상태 처리 및 실타래 갯수 변경
             RevocationReason revocationReason = RevocationReason.findType(decodedPayload.getRevocationReason().getValue());
             Long revocationDate = decodedPayload.getRevocationDate();
-            receiptManagerService.updateRevocationStatus(revocationReason, revocationDate, RevocationStatus.IN_PROGRESS, receipt);
+            receiptService.updateRevocationStatus(revocationReason, revocationDate, RevocationStatus.IN_PROGRESS, receipt);
 
             // 4. ConsumptionRequest 생성
             ConsumptionRequest request = createConsumptionRequest(receipt, decodedPayload.getAppAccountToken());

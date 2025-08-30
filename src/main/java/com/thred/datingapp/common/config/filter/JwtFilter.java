@@ -46,10 +46,9 @@ public class JwtFilter extends OncePerRequestFilter {
         String token = extractTokenFromHeader(request.getHeader(HEADER_STRING));
         if (token != null && !jwtUtils.isExpired(token)) {
 
-            Long socialId = jwtUtils.getSocialId(token);
             Long userId = jwtUtils.getUserId(token);
             String role = jwtUtils.getRole(token);
-            User user = User.createUserForJwt(socialId, userId, role);
+            User user = User.createUserForJwt(userId, role);
             PrincipalDetails principleDetails = new PrincipalDetails(user);
             Authentication authentication1 = new UsernamePasswordAuthenticationToken(principleDetails, null,
                     principleDetails.getAuthorities());

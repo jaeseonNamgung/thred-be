@@ -17,6 +17,7 @@ import com.thred.datingapp.common.error.errorCode.UserErrorCode;
 import com.thred.datingapp.common.service.NotificationService;
 import com.thred.datingapp.common.utils.JwtUtils;
 import com.thred.datingapp.common.utils.RedisUtils;
+import com.thred.datingapp.user.properties.JwtProperties;
 import com.thred.datingapp.user.service.UserService;
 import io.jsonwebtoken.lang.Strings;
 import lombok.Getter;
@@ -27,9 +28,10 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 
-import static com.thred.datingapp.chat.properties.ChatProperties.CHAT_ROOM_PREFIX;
+import static com.thred.datingapp.chat.properties.ChatProperties.*;
 
 @Slf4j
 @Transactional(readOnly = true)
@@ -66,13 +68,13 @@ public class ChatService {
   public void notifyUserChatRoomEvent(final Long chatRoomId, final Long userId, String eventType) {
     User senderId = userService.getUserById(userId);
     ChatMessageResponse chatMessageResponse;
-    if("connect".equals(eventType)) {
+    if(CHAT_CONNECT.equals(eventType)) {
       chatMessageResponse = ChatMessageResponse.enterChatRoom(senderId, chatRoomId);
     }else {
       chatMessageResponse = ChatMessageResponse.leaveChatRoom(senderId, chatRoomId);
     }
     // 상대방 실시간 알림 전송
-    messagingTemplate.convertAndSend("/sub/chat/"+chatRoomId, chatMessageResponse);
+    messagingTemplate.convertAndSend(CHAT_DESTINATION+chatRoomId, chatMessageResponse);
   }
 
   @Transactional
@@ -121,9 +123,9 @@ public class ChatService {
                                        savedChat.getCreatedDate());
       sendNotification(receiverId, notificationDto);
     }
-    ChatMessageResponse chatMessageResponse = ChatMessageResponse.fromDto(savedChat, sender, chatRoomId);
+    ChatMessageResponse chatMessageResponse = ChatMessageResponse.fromDto(savedChat, sender, chatRoomId, LocalDateTime.now().toString());
     log.info("[sendMessage] 채팅 프로세스 완료 ===> chatMessageResponse: {}", chatMessageResponse);
-    return ChatMessageResponse.fromDto(savedChat, sender, chatRoomId);
+    return chatMessageResponse;
   }
 
   private void sendNotification(Long receiverId, NotificationDto notificationDto) {
@@ -145,7 +147,7 @@ public class ChatService {
   }
 
   private static String jwtParse(String token) {
-    if (Strings.hasText(token) && token.startsWith("Bearer ")) {
+    if (Strings.hasText(token) && token.startsWith(JwtProperties.TOKEN_PREFIX)) {
       return token.substring(7);
     }
     return null;

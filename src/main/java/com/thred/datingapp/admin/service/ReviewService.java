@@ -19,6 +19,7 @@ import com.thred.datingapp.common.entity.user.User;
 import com.thred.datingapp.common.error.CustomException;
 import com.thred.datingapp.common.error.errorCode.UserErrorCode;
 import com.thred.datingapp.common.utils.RedisUtils;
+import com.thred.datingapp.inApp.Service.PurchaseService;
 import com.thred.datingapp.main.service.CardService;
 import com.thred.datingapp.admin.repository.ReviewRepository;
 import com.thred.datingapp.user.service.QuestionService;
@@ -68,6 +69,7 @@ public class ReviewService {
   private final RedisUtils          redisUtils;
   private final UserService         userService;
   private final UserDetailService   userDetailService;
+  private final PurchaseService     purchaseService;
 
   @Transactional
   public void updateReview(final Long reviewId, final boolean check, final String reason) {
@@ -78,7 +80,8 @@ public class ReviewService {
       case EDIT_QUESTION -> processEditQuestionReview(review, check, reason);
       case EDIT_INTRODUCE -> processEditIntroduce(review, check, reason);
     }
-    reviewRepository.deleteById(review.getId());
+    // 회원 심사 완료 후 완료 내역 유지 필요한지 확
+    //reviewRepository.deleteById(review.getId());
   }
 
   public Review getJoinReviewByUserId(final Long userId) {
@@ -227,7 +230,7 @@ public class ReviewService {
     if (check) {
       userService.changeJoinStatus(review.getUser().getId(), true);
       if (review.getUser().getInputCode() != null) {
-        userService.joinCodeEvent(review.getUser().getId(), review.getUser().getInputCode());
+        purchaseService.joinCodeEvent(review.getUser().getId(), review.getUser().getInputCode());
       }
       review.updateReviewStatus(ReviewStatus.SUCCESS, null);
       cardService.createCard(review.getUser().getId());

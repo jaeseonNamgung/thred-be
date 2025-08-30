@@ -2,6 +2,7 @@ package com.thred.datingapp.user.repository.querydsl;
 
 import com.thred.datingapp.common.entity.user.User;
 import com.thred.datingapp.common.entity.user.field.Gender;
+import com.thred.datingapp.common.entity.user.field.LoginType;
 import com.thred.datingapp.common.entity.user.field.Smoke;
 import com.thred.datingapp.user.api.request.BlockInfoRequest;
 

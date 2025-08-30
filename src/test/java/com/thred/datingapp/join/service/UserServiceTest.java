@@ -52,8 +52,6 @@ class UserServiceTest {
   @Mock
   private UserDetailService            userDetailService;
   @Mock
-  private BlockService                 blockService;
-  @Mock
   private QuestionService              questionService;
   @Mock
   private ReviewRepository             judgmentsRepository;
@@ -191,45 +189,8 @@ class UserServiceTest {
     then(notificationService).should().sendMessageTo(anyLong(), any(NotificationDto.class));
   }
 
-  @Test
-  @DisplayName("회원이 존재하지 않으면 NotExistUser 에러가 발생한다.")
-  void givenInvalidUserId_whenSetBlockNumber_thenThrowsNotExistUser() {
-    // given
-    List<BlockInfoRequest> blocks = createBlocks();
-    given(userRepository.findById(anyLong())).willReturn(Optional.empty());
-    // when
-    CustomException exception = assertThrows(CustomException.class, () -> sut.setBlockNumber(1L, blocks));
-    // then
-    assertThat(exception.getErrorCode()).isEqualTo(UserErrorCode.USER_NOT_FOUND);
-    then(userRepository).should().findById(anyLong());
-  }
-
-  @Test
-  @DisplayName("setBlockNumber 성공 테스트")
-  void givenValidUserIdAndRequest_whenSetBlockNumber_thenReturnVoid() {
-    // given
-    List<BlockInfoRequest> blocks = createBlocks();
-    User user = UserFixture.createTestUser(1);
-    List<User> blockedUsers = IntStream.rangeClosed(2, 6).mapToObj(UserFixture::createTestUser).toList();
-    given(userRepository.findById(anyLong())).willReturn(Optional.of(user));
-    given(userRepository.findBlockedUsersByPhoneNumberAndName(any())).willReturn(blockedUsers);
-    // when
-    sut.setBlockNumber(1L, blocks);
-    // then
-    then(userRepository).should().findById(anyLong());
-    then(userRepository).should().findBlockedUsersByPhoneNumberAndName(any());
-    then(blockService).should().deleteByBlockerId(anyLong());
-    then(blockService).should().bulkInsert(any(User.class), anyList());
-  }
-
-  private static List<BlockInfoRequest> createBlocks() {
-    return List.of(new BlockInfoRequest("김민수", "010-1234-5678"), new BlockInfoRequest("이영희", "010-2345-6789"),
-                   new BlockInfoRequest("박준형", "010-3456-7890"), new BlockInfoRequest("최지우", "010-4567-8901"),
-                   new BlockInfoRequest("정해인", "010-5678-9012"));
-  }
-
   public static JoinUserRequest createJoinUserRequest() {
-    return new JoinUserRequest(1L, "test@example.com", Gender.MALE.getGender(), "테스트유저", "서울시", "서울특별시", "1990-01-01", "안녕하세요, 자기소개입니다.", "첫 번째 질문",
+    return new JoinUserRequest(1L, LoginType.KAKAO, "test@example.com", Gender.MALE.getGender(), "테스트유저", "서울시", "서울특별시", "1990-01-01", "안녕하세요, 자기소개입니다.", "첫 번째 질문",
                                "두 번째 질문", "세 번째 질문", "010-1234-5678", "CODE123", PartnerGender.OTHER.getGender(), "fcm-token-value");
   }
 

@@ -11,4 +11,5 @@ public interface JwtProperties {
   String CATEGORY                = "category";
   String USER_ID                 = "userId";
   String ROLE                    = "role";
+  String EMAIL                   = "email";
 }

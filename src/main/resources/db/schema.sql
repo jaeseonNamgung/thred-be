@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS chat;
 DROP TABLE IF EXISTS chat_part;
 DROP TABLE IF EXISTS chat_room;
 DROP TABLE IF EXISTS picture;
+DROP TABLE IF EXISTS receipt;
 DROP TABLE IF EXISTS user_asset;
 DROP TABLE IF EXISTS thread_use_history;
 DROP TABLE IF EXISTS receipt;
@@ -70,40 +71,37 @@ CREATE TABLE IF NOT EXISTS thRedDb.report_history
 
 CREATE TABLE IF NOT EXISTS thRedDb.user_info
 (
-    id                 bigint auto_increment
-        primary key,
-    social_id          bigint  not null ,
-    user_state         enum ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'BLOCKED') not null,
-    username           varchar(255)                                        null,
-    role               enum ('ADMIN', 'USER')                              null,
-    birth              varchar(255)                                        null,
-    gender             enum ('FEMALE', 'MALE')                             null,
-    email              varchar(255)                                        null,
-    password           varchar(255)                                        null,
-    city               varchar(255)                                        null,
-    province           varchar(255)                                        null,
-    introduce          text                                                null,
-    code               varchar(255)                                        null,
-    input_code         varchar(255)                                        null,
-    partner_gender     enum ('OTHER', 'SAME')                              null,
-    phone_number       varchar(255)                                        null,
-    certification      tinyint(1) default 0                                null,
-    suspended_time     datetime                                            null,
-    main_profile       varchar(255)                                        null,
-    created_date       datetime(6)                                         null,
-    last_modified_date datetime(6)                                         null,
-    quit_time          datetime(6)                                         null,
-    quit               tinyint(1) default 0                                null
+    id                    bigint auto_increment primary key,
+    social_id             bigint                                              ,
+    login_type            enum('KAKAO', 'PHONE_NUMBER')                       not null,
+    user_state            enum ('ACTIVE', 'INACTIVE', 'SUSPENDED', 'BLOCKED') not null,
+    username              varchar(255)                                        null,
+    role                  enum ('ADMIN', 'USER')                              null,
+    birth                 varchar(255)                                        null,
+    gender                enum ('FEMALE', 'MALE')                             null,
+    email                 varchar(255)                                        null,
+    city                  varchar(255)                                        null,
+    province              varchar(255)                                        null,
+    introduce             text                                                null,
+    code                  varchar(255)                                        null,
+    input_code            varchar(255)                                        null,
+    partner_gender        enum ('OTHER', 'SAME')                              null,
+    phone_number          varchar(255)                                        null,
+    certification         tinyint(1) default 0                                null,
+    withdraw_request_date datetime(4)                                         null,
+    main_profile          varchar(255)                                        null,
+    created_date          datetime(6)                                         null,
+    last_modified_date    datetime(6)                                         null
 );
 
 CREATE TABLE IF NOT EXISTS thRedDb.block
 (
-    id              bigint auto_increment
+    id                 bigint auto_increment
         primary key,
-    blocked_user_id bigint      not null,
-    blocker_id      bigint      not null,
-    created_at      datetime(6) null,
-    updated_at      datetime(6) null,
+    blocked_user_id    bigint      not null,
+    blocker_id         bigint      not null,
+    created_date       datetime(6) null,
+    last_modified_date datetime(6) null,
     constraint fk_block_blocked_user
         foreign key (blocked_user_id) references thRedDb.user_info (id),
     constraint fk_block_blocker

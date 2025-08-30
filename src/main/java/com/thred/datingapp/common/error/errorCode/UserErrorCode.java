@@ -48,7 +48,10 @@ public enum UserErrorCode implements ErrorCode {
   INVALID_PARAMETER(HttpStatus.BAD_REQUEST, "파라미터 값을 올바르게 입력해주세요."),
 
   // 소셜 로그인
-  INVALID_SOCIAL_RESPONSE(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 로그인 응답 중 오류입니다.")
+  INVALID_SOCIAL_RESPONSE(HttpStatus.INTERNAL_SERVER_ERROR, "소셜 로그인 응답 중 오류입니다."),
+
+  // 전화번호 로그인
+  PHONE_NUMBER_PARSE_ERROR(HttpStatus.BAD_REQUEST, "잘못된 전화번호 형식입니다.")
   ;
   private final HttpStatus httpStatus;
   private final String     message;

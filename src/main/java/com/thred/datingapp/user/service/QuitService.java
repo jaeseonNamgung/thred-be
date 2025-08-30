@@ -21,6 +21,11 @@ import java.util.List;
 public class QuitService {
 
   private final UserService            userService;
+  private final UserDetailService      userDetailService;
+  private final PictureService         pictureService;
+  private final BlockService           blockService;
+  private final QuestionService        questionService;
+  private final FcmTokenService        fcmTokenService;
   private final ChatRoomService        chatRoomService;
   private final CommunityService       communityService;
   private final PurchaseService        purchaseService;
@@ -63,7 +68,12 @@ public class QuitService {
       purchaseService.deleteAllPurchaseHistoriesForWithdrawnUser(userId);
       reportService.deleteAllReportsForWithdrawnUser(userId);
       cardService.deleteAllCardsForWithdrawnUser(userId);
-      userService.withdrawUser(userId);
+      userDetailService.deleteByUserId(userId);
+      pictureService.deleteByUserId(userId);
+      blockService.deleteByBlockerId(userId);
+      questionService.deleteByUserId(userId);
+      fcmTokenService.deleteByUserId(userId);
+      userService.deleteByUserId(userId);
     });
     log.info("[deleteExpiredWithdrawUsers] 회원 탈퇴 삭제 완료");
   }

@@ -24,7 +24,7 @@ services:
 
   app:
     container_name: thred_app
-    image: namgungjaeseon/thred_app:dev
+    image: namgungjaeseon/thred_app:${TAG_ID}
     restart: on-failure
     ports:
       - "8080:8080"
@@ -32,7 +32,7 @@ services:
       - database
       - redis
     environment:
-      SPRING.DATASOURCE.URL: jdbc:mysql://thred_db:3306/thRedDb?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+      SPRING.DATASOURCE.URL: jdbc:mysql://thred_db:3306/thRedDb?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&rewriteBatchedStatements=true
       SPRING.DATASOURCE.USERNAME: root
       SPRING.DATASOURCE.PASSWORD: thRed2024
       SPRING.DATASOURCE.DRIVER-CLASS-NAME: com.mysql.cj.jdbc.Driver

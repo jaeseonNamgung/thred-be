@@ -1,8 +1,6 @@
 package com.thred.datingapp.common.config.interceptor;
 
 import com.thred.datingapp.chat.dto.ChatEventDto;
-import com.thred.datingapp.chat.service.ChatRoomService;
-import com.thred.datingapp.chat.service.ChatService;
 import com.thred.datingapp.common.error.CustomException;
 import com.thred.datingapp.common.error.errorCode.BaseErrorCode;
 import com.thred.datingapp.common.error.errorCode.ChatErrorCode;
@@ -17,7 +15,12 @@ import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -79,7 +82,6 @@ public class StompConfig implements ChannelInterceptor {
 
         accessor.getSessionAttributes().put("chatRoomId", chatRoomId);
         accessor.getSessionAttributes().put("userId", userId);
-
         eventPublisher.publishEvent(ChatEventDto.chatConnectEvent(userId, chatRoomId));
     }
 

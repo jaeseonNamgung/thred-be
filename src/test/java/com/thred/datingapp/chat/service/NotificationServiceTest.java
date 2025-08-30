@@ -58,8 +58,8 @@ class NotificationServiceTest {
     @Test
     @DisplayName("FCM Request Url 테스트")
     void sendMessageToTest() throws Exception {
-        //given
-        String fcmToken = "f-hJ1ejDSx-kOO5DV3x5oU:APA91bGLazNphRQN6SG-fdCmaX4kUbRNlkCt3w9-bVfyJK8ugrQOG_YcLhVgQYXzGStJ86158_1f8bYvuacxoQvMc6cCVJYiKSLxQl80bn0-s7Zkj3DpgRY";
+        //givenhJ1ejDSx
+        String fcmToken = "dTNWlbhDcE78uOkWsmVN-h:APA91bGAlzPNQr8LRLmBBDxqKdzgi_OaDkEYv9Xw7Eq_PInKFPeRVMFosTftxj_yYrzB39wbRTJR3lf2UxRvkh3Z779y8V5zj1sVzlbXopQjz-64d_2J-fo";
         NotificationDto notificationResponse = createNotificationResponse();
         given(tokenRepository.findByMemberUserId(any())).willReturn(Optional.of(fcmToken));
 

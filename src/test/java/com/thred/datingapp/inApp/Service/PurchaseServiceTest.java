@@ -12,11 +12,8 @@ import com.thred.datingapp.common.error.errorCode.UserErrorCode;
 import com.thred.datingapp.inApp.dto.request.ThreadRequest;
 import com.thred.datingapp.inApp.dto.request.ReceiptRequest;
 import com.thred.datingapp.inApp.dto.VerifiedProductDto;
-import com.thred.datingapp.inApp.repository.ProductRepository;
-import com.thred.datingapp.inApp.repository.ReceiptRepository;
-import com.thred.datingapp.inApp.repository.ThreadUseHistoryRepository;
-import com.thred.datingapp.inApp.repository.UserAssetRepository;
-import com.thred.datingapp.user.repository.UserRepository;
+import com.thred.datingapp.user.service.UserAssetService;
+import com.thred.datingapp.user.service.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,17 +38,17 @@ import static org.mockito.Mockito.times;
 class PurchaseServiceTest {
 
   @Mock
-  private UserRepository             userRepository;
+  private UserService             userService;
   @Mock
-  private UserAssetRepository        assetRepository;
+  private UserAssetService        userAssetService;
   @Mock
-  private ProductRepository          productRepository;
+  private ProductService          productService;
   @Mock
-  private ReceiptRepository          receiptRepository;
+  private ReceiptService          receiptService;
   @Mock
-  private AppleInAppService          inAppService;
+  private AppleInAppService       inAppService;
   @Mock
-  private ThreadUseHistoryRepository threadUseHistoryRepository;
+  private ThreadUseHistoryService threadUseHistoryService;
 
   @InjectMocks
   private PurchaseService sut;
@@ -67,10 +64,10 @@ class PurchaseServiceTest {
     UserAsset asset = createAsset(10);
     VerifiedProductDto verifiedProductDto = createSaveProductDto();
 
-    given(userRepository.findById(any())).willReturn(Optional.of(user));
+    given(userService.getUserById(any())).willReturn(user);
     given(inAppService.verifyReceipt(any())).willReturn(verifiedProductDto);
-    given(productRepository.findByInAppProductId(any())).willReturn(Optional.of(product));
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.of(asset));
+    given(productService.getByProductId(any())).willReturn(product);
+    given(userAssetService.getUserAsset(any(User.class))).willReturn(asset);
 
     //when
     boolean expectedBool = sut.processInAppPurchase(1L, receiptRequest);
@@ -78,12 +75,12 @@ class PurchaseServiceTest {
     //then
     assertTrue(expectedBool);
 
-    then(userRepository).should().findById(any());
+    then(userService).should().getUserById(any());
     then(inAppService).should().verifyReceipt(any());
-    then(productRepository).should().findByInAppProductId(any());
-    then(receiptRepository).should().save(any());
-    then(assetRepository).should().findUserAssetByUserId(any());
-    then(threadUseHistoryRepository).should().save(any());
+    then(productService).should().getByProductId(any());
+    then(receiptService).should().save(any());
+    then(userAssetService).should().getUserAsset(any(User.class));
+    then(threadUseHistoryService).should().save(any());
   }
 
   @Test
@@ -95,41 +92,25 @@ class PurchaseServiceTest {
     ReflectionTestUtils.setField(user, "id", 1L);
     Product product = createProduct();
     VerifiedProductDto verifiedProductDto = createSaveProductDto();
+    UserAsset asset = createAsset(0);
 
-    given(userRepository.findById(any())).willReturn(Optional.of(user));
+    given(userService.getUserById(any())).willReturn(user);
     given(inAppService.verifyReceipt(any())).willReturn(verifiedProductDto);
-    given(productRepository.findByInAppProductId(any())).willReturn(Optional.of(product));
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.empty());
+    given(productService.getByProductId(any())).willReturn(product);
+    given(userAssetService.getUserAsset(any(User.class))).willReturn(asset);
 
     //when
     boolean expectedBool = sut.processInAppPurchase(1L, receiptRequest);
     //then
     assertTrue(expectedBool);
 
-    then(userRepository).should().findById(any());
+    then(userService).should().getUserById(any());
     then(inAppService).should().verifyReceipt(any());
-    then(productRepository).should().findByInAppProductId(any());
-    then(receiptRepository).should().save(any());
-    then(assetRepository).should().findUserAssetByUserId(any());
-    then(assetRepository).should().save(any());
-    then(threadUseHistoryRepository).should().save(any());
-  }
-
-  @Test
-  @DisplayName("회원이 존재하지 않을 때 에러 발생")
-  void processInAppPurchase4() throws Exception {
-    //given
-    ReceiptRequest receiptRequest = ReceiptRequest.of("receiptData", InAppType.APPLE);
-
-    given(userRepository.findById(any())).willReturn(Optional.empty());
-
-    //when & then
-    CustomException expectedException = assertThrows(CustomException.class, () -> sut.processInAppPurchase(1L, receiptRequest));
-
-    assertThat(expectedException.getErrorCode().getHttpStatus()).isEqualTo(UserErrorCode.USER_NOT_FOUND.getHttpStatus());
-    assertThat(expectedException.getMessage()).isEqualTo(UserErrorCode.USER_NOT_FOUND.getMessage());
-
-    then(userRepository).should().findById(any());
+    then(productService).should().getByProductId(any());
+    then(receiptService).should().save(any());
+    then(userAssetService).should().getUserAsset(any(User.class));
+    then(userAssetService).should().save(any());
+    then(threadUseHistoryService).should().save(any());
   }
 
   @Test
@@ -140,7 +121,7 @@ class PurchaseServiceTest {
     User user = createUser();
     ReflectionTestUtils.setField(user, "id", 1L);
 
-    given(userRepository.findById(any())).willReturn(Optional.of(user));
+    given(userService.getUserById(any())).willReturn(user);
     given(inAppService.verifyReceipt(any())).willReturn(null);
 
     //when & then
@@ -149,32 +130,8 @@ class PurchaseServiceTest {
     assertThat(expectedException.getErrorCode().getHttpStatus()).isEqualTo(InAppErrorCode.RECEIPT_SIGNATURE_VERIFICATION_ERROR.getHttpStatus());
     assertThat(expectedException.getMessage()).isEqualTo(InAppErrorCode.RECEIPT_SIGNATURE_VERIFICATION_ERROR.getMessage());
 
-    then(userRepository).should().findById(any());
+    then(userService).should().getUserById(any());
     then(inAppService).should().verifyReceipt(any());
-  }
-
-  @Test
-  @DisplayName("상품이 없을 때 에러 발생")
-  void processInAppPurchase6() throws Exception {
-    //given
-    ReceiptRequest receiptRequest = ReceiptRequest.of("receiptData", InAppType.APPLE);
-    User user = createUser();
-    ReflectionTestUtils.setField(user, "id", 1L);
-    VerifiedProductDto verifiedProductDto = createSaveProductDto();
-
-    given(userRepository.findById(any())).willReturn(Optional.of(user));
-    given(inAppService.verifyReceipt(any())).willReturn(verifiedProductDto);
-    given(productRepository.findByInAppProductId(any())).willReturn(Optional.empty());
-
-    //when & then
-    CustomException expectedException = assertThrows(CustomException.class, () -> sut.processInAppPurchase(1L, receiptRequest));
-
-    assertThat(expectedException.getErrorCode().getHttpStatus()).isEqualTo(InAppErrorCode.PURCHASE_ERROR.getHttpStatus());
-    assertThat(expectedException.getMessage()).isEqualTo(InAppErrorCode.PURCHASE_ERROR.getMessage());
-
-    then(userRepository).should().findById(any());
-    then(inAppService).should().verifyReceipt(any());
-    then(productRepository).should().findByInAppProductId(any());
   }
 
   /*
@@ -189,31 +146,16 @@ class PurchaseServiceTest {
   void useThreadTest() {
     // given
     UserAsset asset = createAsset(10);
-    ThreadRequest threadRequest = new ThreadRequest(1L, "viewProfile");
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.of(asset));
+    ThreadRequest threadRequest = new ThreadRequest(1L, "VIEW_PROFILE");
+    given(userAssetService.getUserAsset(any(Long.class))).willReturn(asset);
 
     // when
     boolean expectedBool = sut.useThread(1L, threadRequest);
     // then
     assertTrue(expectedBool);
 
-    then(assetRepository).should().findUserAssetByUserId(any());
-    then(threadUseHistoryRepository).should().save(any());
-  }
-
-  @Test
-  @DisplayName("사용자 실타래 사용 이력 저장 테스트 - userAsset가 존재하지 않을 경우 예외 발생")
-  void useThreadTest2() {
-    // given
-    ThreadRequest threadRequest = new ThreadRequest(1L, "allProfileView");
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.empty());
-    // when
-    CustomException expectedException = (CustomException) catchException(() -> sut.useThread(1L, threadRequest));
-    // then
-    assertThat(expectedException.getErrorCode()).hasFieldOrPropertyWithValue("httpStatus", InAppErrorCode.NOT_EXIST_THREAD.getHttpStatus())
-                                                .hasFieldOrPropertyWithValue("message", InAppErrorCode.NOT_EXIST_THREAD.getMessage());
-
-    then(assetRepository).should().findUserAssetByUserId(any());
+    then(userAssetService).should().getUserAsset(any(Long.class));
+    then(threadUseHistoryService).should().save(any());
   }
 
   @Test
@@ -221,8 +163,8 @@ class PurchaseServiceTest {
   void useThreadTest3() {
     // given
     UserAsset asset = createAsset(1);
-    ThreadRequest threadRequest = new ThreadRequest(1L, "viewProfile");
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.of(asset));
+    ThreadRequest threadRequest = new ThreadRequest(1L, "VIEW_PROFILE");
+    given(userAssetService.getUserAsset(any(Long.class))).willReturn(asset);
 
     // when
     CustomException expectedException = (CustomException) catchException(() -> sut.useThread(1L, threadRequest));
@@ -230,36 +172,9 @@ class PurchaseServiceTest {
     assertThat(expectedException.getErrorCode()).hasFieldOrPropertyWithValue("httpStatus", InAppErrorCode.INSUFFICIENT_THREAD_COUNT.getHttpStatus())
                                                 .hasFieldOrPropertyWithValue("message", InAppErrorCode.INSUFFICIENT_THREAD_COUNT.getMessage());
 
-    then(assetRepository).should().findUserAssetByUserId(any());
+    then(userAssetService).should().getUserAsset(any(Long.class));
   }
 
-  @Test
-  @DisplayName("실타래 수량 조회 테스트 - 구매한 실 있음")
-  void getTotalThreadTest() {
-    // given
-    given(assetRepository.findTotalThreadByUserId(any())).willReturn(Optional.of(10));
-    // when
-    int expectedValue = sut.getTotalThread(1L);
-    // then
-    assertThat(expectedValue).isEqualTo(10);
-
-    then(assetRepository).should().findTotalThreadByUserId(any());
-
-  }
-
-  @Test
-  @DisplayName("실타래 수량 조회 테스트 - 구매한 실 없음 -> 0을 리턴")
-  void getTotalThreadTest2() {
-    // given
-
-    given(assetRepository.findTotalThreadByUserId(any())).willReturn(Optional.empty());
-    // when
-    int expectedValue = sut.getTotalThread(1L);
-    // then
-    assertThat(expectedValue).isEqualTo(0);
-
-    then(assetRepository).should().findTotalThreadByUserId(any());
-  }
 
   /*
    *
@@ -274,13 +189,14 @@ class PurchaseServiceTest {
     User referredUserId = createUser();
     User referrerUserId = createUser();
     ReflectionTestUtils.setField(referrerUserId, "id", 2L);
-
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.empty());
+    UserAsset asset = createAsset(0);
+    given(userAssetService.getUserAsset(any(User.class))).willReturn(asset);
     // when
     sut.updateThreadQuantityByReferralCode(referredUserId, referrerUserId);
     // then
-    then(assetRepository).should(times(2)).save(any());
-    then(threadUseHistoryRepository).should(times(2)).save(any());
+    then(userAssetService).should(times(2)).save(any());
+    then(threadUseHistoryService).should(times(2)).save(any());
+    then(userAssetService).should().getUserAsset(any(User.class));
   }
 
   @Test
@@ -293,12 +209,13 @@ class PurchaseServiceTest {
 
     UserAsset asset = createAsset(10);
 
-    given(assetRepository.findUserAssetByUserId(any())).willReturn(Optional.of(asset));
+    given(userAssetService.getUserAsset(any(User.class))).willReturn(asset);
     // when
     sut.updateThreadQuantityByReferralCode(referredUserId, referrerUserId);
     // then
-    then(assetRepository).should(times(2)).save(any());
-    then(threadUseHistoryRepository).should(times(2)).save(any());
+    then(userAssetService).should(times(2)).save(any());
+    then(threadUseHistoryService).should(times(2)).save(any());
+    then(userAssetService).should().getUserAsset(any(User.class));
   }
 
   /*
@@ -312,14 +229,14 @@ class PurchaseServiceTest {
     Long userId = 1L;
     Long targetUserId = 2L;
     Long targetItemId = 1L;
-    String purchaseTypeValue = "viewProfile";
+    String purchaseTypeValue = "VIEW_PROFILE";
 
-    given(threadUseHistoryRepository.existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any())).willReturn(true);
+    given(threadUseHistoryService.existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any())).willReturn(true);
     // when
     boolean expectedBool = sut.existsThreadUseHistory(userId, targetUserId, purchaseTypeValue);
     // then
     assertThat(expectedBool).isTrue();
-    then(threadUseHistoryRepository).should().existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any());
+    then(threadUseHistoryService).should().existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any());
   }
 
   @Test
@@ -329,14 +246,14 @@ class PurchaseServiceTest {
     Long userId = 1L;
     Long targetUserId = 2L;
     Long targetItemId = 1L;
-    String purchaseTypeValue = "answerQuestion";
+    String purchaseTypeValue = "VIEW_PROFILE";
 
-    given(threadUseHistoryRepository.existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any())).willReturn(true);
+    given(threadUseHistoryService.existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any())).willReturn(true);
     // when
     boolean expectedBool = sut.existsThreadUseHistory(userId, targetUserId, purchaseTypeValue);
     // then
     assertThat(expectedBool).isTrue();
-    then(threadUseHistoryRepository).should().existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any());
+    then(threadUseHistoryService).should().existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any());
   }
 
   @Test
@@ -346,13 +263,13 @@ class PurchaseServiceTest {
     Long userId = 1L;
     Long targetUserId = 2L;
     Long targetItemId = 1L;
-    String purchaseTypeValue = "viewProfile";
-    given(threadUseHistoryRepository.existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any())).willReturn(false);
+    String purchaseTypeValue = "VIEW_PROFILE";
+    given(threadUseHistoryService.existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any())).willReturn(false);
     // when
     boolean expectedBool = sut.existsThreadUseHistory(userId, targetUserId, purchaseTypeValue);
     // then
     assertThat(expectedBool).isFalse();
-    then(threadUseHistoryRepository).should().existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any());
+    then(threadUseHistoryService).should().existsByUserIdAndTargetUserIdAndTargetItemId(any(), any(), any());
   }
 
   private static VerifiedProductDto createSaveProductDto() {

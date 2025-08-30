@@ -28,55 +28,56 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+  private final JwtUtils jwtUtils;
 
-    private final JwtUtils    jwtUtils;
+  @Bean
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+    return configuration.getAuthenticationManager();
+  }
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
-        return configuration.getAuthenticationManager();
-    }
+  @Bean
+  public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    http.csrf(AbstractHttpConfigurer::disable);
+    http.formLogin(AbstractHttpConfigurer::disable);
+    http.httpBasic(AbstractHttpConfigurer::disable);
+    http.cors(cors -> cors.configurationSource(corsConfigurationSource()));
+    http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+    // formLogin을 비활성화 했으니 직접 등록
+    http.authorizeHttpRequests(request -> request.requestMatchers("/api/admin/**")
+                                                 .hasRole("ADMIN")
+                                                 .requestMatchers("/api/user/join", "/api/login/reissue/**", "/api/user/join/**",
+                                                                  "/api/user/email/**", "/api/user/code/**", "/api/user/username/**",
+                                                                  "/api/user/*/check", "/api/phone/login", "/api/oauth/login", "/api-docs/**",
+                                                                  "/swagger-ui/**", "/api/chat/room/withdraw/user/**",
+                                                                  "/api/community/withdraw/user/**", "/actuator/health", "/api/apple/notification/**",
+                                                                  "/ws/**")
+                                                 .permitAll()
+                                                 .anyRequest()
+                                                 .authenticated()).exceptionHandling(exception -> {
+      // 인증 되지 않은 사용자가 보호된 리소스에 접근하려고 할때 예외 커스텀(토큰 자체가 없을때)
+      exception.authenticationEntryPoint(new CustomAuthenticationEntryPoint()).accessDeniedHandler(new CustomAccessDeniedHandler());
+    });
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.csrf(AbstractHttpConfigurer::disable);
-        http.formLogin(AbstractHttpConfigurer::disable);
-        http.httpBasic(AbstractHttpConfigurer::disable);
-        http.cors(cors->cors.configurationSource(corsConfigurationSource()));
-        http.sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
-        // formLogin을 비활성화 했으니 직접 등록
-        http.authorizeHttpRequests(request->request
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/user/join","/api/login/reissue/**","/api/user/join/**","/api/user/email/**",
-                        "/api/user/code/**","/api/user/username/**","/api/user/*/check","/api/login/**", "/api/oauth/login",
-                        "/api-docs/**", "/swagger-ui/**", "/api/chat/room/withdraw/user/**",
-                        "/api/community/withdraw/user/**", "/actuator/health", "/api/apple/notification/**").permitAll()
-                .anyRequest().authenticated())
-                .exceptionHandling(exception->{
-                    // 인증 되지 않은 사용자가 보호된 리소스에 접근하려고 할때 예외 커스텀(토큰 자체가 없을때)
-                    exception.authenticationEntryPoint(new CustomAuthenticationEntryPoint())
-                            .accessDeniedHandler(new CustomAccessDeniedHandler());
-        });
+    http.addFilterBefore(new JwtFilter(jwtUtils), UsernamePasswordAuthenticationFilter.class);
+    http.addFilterBefore(new ExceptionFilter(), JwtFilter.class);
 
-        http.addFilterBefore(new JwtFilter(jwtUtils), UsernamePasswordAuthenticationFilter.class);
-        http.addFilterBefore(new ExceptionFilter(), JwtFilter.class);
+    return http.build();
+  }
 
-        return http.build();
-    }
-    // cors 설정
-    private CorsConfigurationSource corsConfigurationSource(){
-        CorsConfiguration configuration = new CorsConfiguration();
+  // cors 설정
+  private CorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
-        configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Collections.singletonList("*"));
-        configuration.setExposedHeaders(Collections.singletonList("Authorization"));
-        configuration.setAllowCredentials(true);
+    configuration.setAllowedOrigins(Collections.singletonList("http://localhost:3000"));
+    configuration.setAllowedOriginPatterns(Collections.singletonList("*"));
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(Collections.singletonList("*"));
+    configuration.setExposedHeaders(Collections.singletonList("Authorization"));
+    configuration.setAllowCredentials(true);
 
-        UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource
-                = new UrlBasedCorsConfigurationSource();
-        urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", configuration);
+    UrlBasedCorsConfigurationSource urlBasedCorsConfigurationSource = new UrlBasedCorsConfigurationSource();
+    urlBasedCorsConfigurationSource.registerCorsConfiguration("/**", configuration);
 
-        return urlBasedCorsConfigurationSource;
-    }
+    return urlBasedCorsConfigurationSource;
+  }
 }

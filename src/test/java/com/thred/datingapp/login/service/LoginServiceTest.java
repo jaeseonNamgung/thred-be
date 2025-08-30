@@ -94,10 +94,9 @@ class LoginServiceTest {
         given(jwtUtils.isExpired("asd")).willReturn(false);
         given(jwtUtils.getUserId("asd")).willReturn(1L);
         given(jwtUtils.getRole("asd")).willReturn("user");
-        given(jwtUtils.getSocialId("asd")).willReturn(12345L);
         given(jwtUtils.getUserId("asd")).willReturn(1L);
         given(jwtUtils.getRole("asd")).willReturn("user");
-        given(jwtUtils.createJwt(ACCESS_TOKEN,12345L,1L,"user",ACCESS_EXPIRATION_TIME)).willReturn("adsasdasdsa");
+        given(jwtUtils.createJwt(ACCESS_TOKEN,1L,"user","email", ACCESS_EXPIRATION_TIME)).willReturn("adsasdasdsa");
         //when & then
         String accessToken = loginService.reissueAccessToken("asd");
         assertThat(accessToken).isNotNull();
@@ -182,9 +181,8 @@ class LoginServiceTest {
         given(jwtUtils.isExpired("asd")).willReturn(false);
         given(jwtUtils.getUserId("asd")).willReturn(user.getId());
         given(jwtUtils.getRole("asd")).willReturn("user");
-        given(jwtUtils.getSocialId("asd")).willReturn(12345L);
         given(jwtUtils.getRole("asd")).willReturn("user");
-        given(jwtUtils.createJwt(REFRESH_TOKEN,12345L,user.getId(),"user",REFRESH_EXPIRATION_TIME)).willReturn("adsasdasdsa");
+        given(jwtUtils.createJwt(REFRESH_TOKEN,user.getId(),"user","email",REFRESH_EXPIRATION_TIME)).willReturn("adsasdasdsa");
         //when & then
         assertThat(loginService.reissueRefreshToken("asd")).isNotNull();
         Optional<RefreshToken> refreshTokenOptional = refreshTokenRepository.findByUserId(user.getId());
@@ -269,10 +267,9 @@ class LoginServiceTest {
         given(jwtUtils.isExpired("asd")).willReturn(false);
         given(jwtUtils.getUserId("asd")).willReturn(user.getId());
         given(jwtUtils.getRole("asd")).willReturn("user");
-        given(jwtUtils.getSocialId("asd")).willReturn(12345L);
         given(jwtUtils.getRole("asd")).willReturn("user");
-        given(jwtUtils.createJwt(REFRESH_TOKEN,12345L,user.getId(),"user",REFRESH_EXPIRATION_TIME)).willReturn("bbbb");
-        given(jwtUtils.createJwt(ACCESS_TOKEN,12345L,user.getId(),"user",ACCESS_EXPIRATION_TIME)).willReturn("aaaa");
+        given(jwtUtils.createJwt(REFRESH_TOKEN,user.getId(),"email","ADMIN",REFRESH_EXPIRATION_TIME)).willReturn("bbbb");
+        given(jwtUtils.createJwt(ACCESS_TOKEN,user.getId(),"email","ADMIN", ACCESS_EXPIRATION_TIME)).willReturn("aaaa");
         //when & then
         Tokens newTokens = loginService.reissue("asd");
         assertThat(newTokens.accessToken()).isEqualTo("aaaa");

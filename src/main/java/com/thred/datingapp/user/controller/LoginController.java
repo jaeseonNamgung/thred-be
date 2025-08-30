@@ -4,7 +4,8 @@ import com.thred.datingapp.common.api.response.ApiDataResponse;
 import com.thred.datingapp.common.utils.CookieUtils;
 import com.thred.datingapp.common.utils.JwtUtils;
 import com.thred.datingapp.user.api.request.OAuthLoginRequest;
-import com.thred.datingapp.user.api.response.OAuthLoginResponse;
+import com.thred.datingapp.user.api.request.PhoneLoginRequest;
+import com.thred.datingapp.user.dto.LoginDto;
 import com.thred.datingapp.user.api.response.ProcessingResultResponse;
 import com.thred.datingapp.common.annotation.Login;
 import com.thred.datingapp.user.api.response.LoginResponse;
@@ -51,17 +52,29 @@ public class LoginController {
     public ApiDataResponse<LoginResponse> oAuthLogin(@RequestBody OAuthLoginRequest oAuthLoginRequest, HttpServletResponse response){
         log.info("[API CALL] /api/oauth/login - OAuth 로그인 요청");
         log.debug("[oAuthLogin] oAuthLoginRequest: {}", oAuthLoginRequest);
-        OAuthLoginResponse oAuthLoginResponse = loginService.loginWithOAuth(oAuthLoginRequest);
-        if(oAuthLoginResponse.status()) {
-            if(Strings.isNotBlank(oAuthLoginResponse.accessToken())) {
-                response.setHeader(HEADER_STRING, TOKEN_PREFIX + oAuthLoginResponse.accessToken());
-                response.setHeader(USER_ID, oAuthLoginResponse.userId().toString());
-            }
-            if (Strings.isNotBlank(oAuthLoginResponse.refreshToken())) {
-                cookieUtils.addCookie(response, REFRESH_TOKEN, oAuthLoginResponse.refreshToken());
-            }
-        }
-        return ApiDataResponse.ok(LoginResponse.of(oAuthLoginResponse.status(), oAuthLoginResponse.certification(), oAuthLoginResponse.role()));
+        LoginDto loginDto = loginService.loginWithOAuth(oAuthLoginRequest);
+        setLoginTokens(response, loginDto);
+        return ApiDataResponse.ok(LoginResponse.of(loginDto.status(), loginDto.certification(), loginDto.role()));
     }
 
+    @PostMapping("/phone/login")
+    public ApiDataResponse<LoginResponse> phoneLogin(@RequestBody PhoneLoginRequest phoneLoginRequest, HttpServletResponse response) {
+        log.info("[API CALL] /api/phone/login - 핸드폰 번호 로그인 요청");
+        log.debug("[phoneLogin] oAuthLoginRequest: {}", phoneLoginRequest);
+        LoginDto loginDto = loginService.phoneLogin(phoneLoginRequest);
+        setLoginTokens(response, loginDto);
+        return ApiDataResponse.ok(LoginResponse.of(loginDto.status(), loginDto.certification(), loginDto.role()));
+    }
+
+    private void setLoginTokens(final HttpServletResponse response, final LoginDto loginDto) {
+        if(loginDto.status()) {
+            if(Strings.isNotBlank(loginDto.accessToken())) {
+                response.setHeader(HEADER_STRING, TOKEN_PREFIX + loginDto.accessToken());
+                response.setHeader(USER_ID, loginDto.userId().toString());
+            }
+            if (Strings.isNotBlank(loginDto.refreshToken())) {
+                cookieUtils.addCookie(response, REFRESH_TOKEN, loginDto.refreshToken());
+            }
+        }
+    }
 }

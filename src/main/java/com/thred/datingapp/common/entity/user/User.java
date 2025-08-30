@@ -69,6 +69,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private String mainProfile;
 
+    @Enumerated(EnumType.STRING)
+    private LoginType loginType;
+
     @Setter(AccessLevel.PROTECTED)
     @OneToOne(mappedBy = "user")
     private UserDetail userDetail;
@@ -78,8 +81,7 @@ public class User extends BaseEntity {
     private List<Picture> profiles = new ArrayList<>();
 
 
-    private User(Long socialId, Long userId, Role role) {
-        this.socialId = socialId;
+    private User(Long userId, Role role) {
         this.id = userId;
         this.role = role;
     }
@@ -87,7 +89,7 @@ public class User extends BaseEntity {
     @Builder
     public User(String username, Long socialId, LocalDate birth, Role role, Gender gender, String email,
                 Address address, String introduce, String code, PartnerGender partnerGender,
-                String phoneNumber, Boolean certification, String inputCode, String mainProfile) {
+                String phoneNumber, Boolean certification, String inputCode, String mainProfile, LoginType loginType) {
         this.username = username;
         this.socialId = socialId;
         this.userState = UserState.ACTIVE;
@@ -103,14 +105,15 @@ public class User extends BaseEntity {
         this.certification = certification;
         this.inputCode = inputCode;
         this.mainProfile = mainProfile;
+        this.loginType = loginType;
     }
 
     public void createCode(String code) {
         this.code = code;
     }
 
-    public static User createUserForJwt(Long socialId, Long userId, String role) {
-        return new User(socialId, userId, Role.findRole(role));
+    public static User createUserForJwt(Long userId, String role) {
+        return new User(userId, Role.findRole(role));
     }
 
     public void updateMainProfile(String path) {

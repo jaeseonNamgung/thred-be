@@ -1,0 +1,44 @@
+services:
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./volumes/grafana/grafana-provisioning:/etc/grafana/provisioning
+      - ./volumes/grafana/grafana-dashboard:/dashboard
+      - ./volumes/grafana/grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - --web.enable-remote-write-receiver
+      - --enable-feature=native-histograms
+      - --config.file=/etc/prometheus/prometheus.yaml
+    volumes:
+      - ./volumes/prometheus:/etc/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+  k6:
+    image: grafana/k6
+    volumes:
+      - ./volumes/k6/k6-scripts:/scripts
+    command: run -o experimental-prometheus-rw /scripts/script.js
+    environment:
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+networks:
+  monitoring:
+    driver: bridge
